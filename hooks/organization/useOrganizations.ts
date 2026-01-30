@@ -142,6 +142,29 @@ export function useOrganizationMembers(orgId: string | null, page: number = 1) {
   });
 }
 
+export interface ProjectTeamMember {
+  user: {
+    id: string;
+    email: string;
+    name?: string | null;
+    avatar?: string | null;
+  };
+}
+
+export function useProjectTeamMembers(orgId: string | null, projectId: string | null) {
+  return useQuery({
+    queryKey: ['organizations', orgId, 'projects', projectId, 'team-members'],
+    queryFn: async () => {
+      if (!orgId || !projectId) return null;
+      const { data } = await api.get<{ members: ProjectTeamMember[] }>(
+        `/orgs/${orgId}/projects/${projectId}/team-members`
+      );
+      return data;
+    },
+    enabled: !!orgId && !!projectId,
+  });
+}
+
 export function useOrganizationTeams(orgId: string | null) {
   return useQuery({
     queryKey: ['organizations', orgId, 'teams'],
