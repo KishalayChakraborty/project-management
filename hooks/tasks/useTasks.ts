@@ -40,6 +40,19 @@ export interface Task {
   };
 }
 
+export interface TaskDetail extends Task {
+  parent?: { id: string; title: string } | null;
+  children?: { id: string; title: string; status: string; priority: string }[];
+  dependencies?: { blockedByTask: { id: string; title: string; status: string } }[];
+  workLogs?: {
+    id: string;
+    totalDurationMin: number;
+    createdAt: string;
+    user: { id: string; email: string; name: string | null };
+    segments: { startDt: string; endDt: string; durationMin: number }[];
+  }[];
+}
+
 export interface CreateTaskInput {
   parentId?: string;
   title: string;
@@ -93,7 +106,7 @@ export function useTask(
     queryKey: ['tasks', orgId, projectId, taskId],
     queryFn: async () => {
       if (!orgId || !projectId || !taskId) return null;
-      const { data } = await api.get<{ task: Task }>(
+      const { data } = await api.get<{ task: TaskDetail }>(
         `/orgs/${orgId}/projects/${projectId}/tasks/${taskId}`
       );
       return data.task;

@@ -1,6 +1,7 @@
 'use client';
 
-import { useParams, usePathname } from 'next/navigation';
+import { useEffect } from 'react';
+import { useParams, usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useProject } from '@/hooks/projects';
 import { useUserRole } from '@/hooks/organization';
@@ -55,11 +56,19 @@ export default function ProjectLayout({
 }) {
   const params = useParams();
   const pathname = usePathname();
+  const router = useRouter();
   const orgId = params.orgId as string;
   const projectId = params.projectId as string;
 
   const { data: project, isLoading: projectLoading } = useProject(orgId, projectId);
   const { data: userRole, isLoading: roleLoading } = useUserRole(orgId);
+
+  useEffect(() => {
+    if (roleLoading || userRole === undefined) return;
+    if (userRole === 'MEMBER') {
+      router.replace(`/orgs/${orgId}/my-work`);
+    }
+  }, [userRole, roleLoading, orgId, router]);
 
   const basePath = `/orgs/${orgId}/projects/${projectId}`;
   const isAdminOrMaintainer = userRole === 'ADMIN' || userRole === 'MAINTAINER';
@@ -102,6 +111,14 @@ export default function ProjectLayout({
   ];
 
   const { data: session } = useSession();
+
+  if (!roleLoading && userRole === 'MEMBER') {
+    return (
+      <div className="flex flex-1 items-center justify-center p-8">
+        <div className="text-muted-foreground">Redirecting...</div>
+      </div>
+    );
+  }
 
   return (
     <SidebarProvider>
