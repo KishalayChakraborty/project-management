@@ -22,13 +22,36 @@ export async function GET(
   try {
     const { orgId } = await params;
     const user = await requireAuth();
-    await requireOrgAccess(orgId, user.id);
+    const member = await requireOrgAccess(orgId, user.id);
+
+    const baseWhere =
+      member.role === 'MEMBER'
+        ? {
+            orgId,
+            parentId: null,
+            OR: [
+              {
+                teamLinks: {
+                  some: {
+                    team: {
+                      members: {
+                        some: { userId: user.id },
+                      },
+                    },
+                  },
+                },
+              },
+              {
+                userLinks: {
+                  some: { userId: user.id },
+                },
+              },
+            ],
+          }
+        : { orgId, parentId: null };
 
     const projects = await prisma.project.findMany({
-      where: {
-        orgId,
-        parentId: null,
-      },
+      where: baseWhere,
       include: {
         creator: {
           select: {

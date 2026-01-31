@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import prisma from '@/lib/prisma';
-import { requireAuth, requireOrgAccess } from '@/lib/auth';
+import { requireAuth, requireOrgAccess, requireOrgRole, requireProjectAccess } from '@/lib/auth';
 import type { Prisma } from '@/app/generated/prisma/client';
 
 const createTaskSchema = z.object({
@@ -27,7 +27,7 @@ export async function GET(
   try {
     const { orgId, projectId } = await params;
     const user = await requireAuth();
-    await requireOrgAccess(orgId, user.id);
+    await requireProjectAccess(orgId, projectId, user.id);
 
     const { searchParams } = new URL(request.url);
     const parentTaskId = searchParams.get('parentTaskId');
@@ -126,7 +126,8 @@ export async function POST(
   try {
     const { orgId, projectId } = await params;
     const user = await requireAuth();
-    await requireOrgAccess(orgId, user.id);
+    await requireProjectAccess(orgId, projectId, user.id);
+    await requireOrgRole(orgId, user.id, ['ADMIN', 'MAINTAINER']);
 
     const body = await request.json();
     const data = createTaskSchema.parse(body);

@@ -59,3 +59,44 @@ export async function requireOrgRole(
   return member;
 }
 
+export async function requireProjectAccess(orgId: string, projectId: string, userId: string) {
+  const member = await requireOrgAccess(orgId, userId);
+
+  if (member.role === 'ADMIN' || member.role === 'MAINTAINER') {
+    return member;
+  }
+
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: { orgId: true },
+  });
+
+  if (!project || project.orgId !== orgId) {
+    throw new Error('Project not found');
+  }
+
+  const [viaTeam, viaUserLink] = await Promise.all([
+    prisma.projectTeamLink.findFirst({
+      where: {
+        projectId,
+        team: {
+          members: {
+            some: { userId },
+          },
+        },
+      },
+    }),
+    prisma.projectUserLink.findUnique({
+      where: {
+        projectId_userId: { projectId, userId },
+      },
+    }),
+  ]);
+
+  if (!viaTeam && !viaUserLink) {
+    throw new Error('Access denied');
+  }
+
+  return member;
+}
+

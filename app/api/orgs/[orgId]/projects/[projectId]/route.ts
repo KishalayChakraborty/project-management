@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import prisma from '@/lib/prisma';
-import { requireAuth, requireOrgAccess, requireOrgRole } from '@/lib/auth';
+import { requireAuth, requireOrgAccess, requireOrgRole, requireProjectAccess } from '@/lib/auth';
 
 const updateProjectSchema = z.object({
   name: z.string().min(1).optional(),
@@ -20,7 +20,7 @@ export async function GET(
   try {
     const { orgId, projectId } = await params;
     const user = await requireAuth();
-    await requireOrgAccess(orgId, user.id);
+    await requireProjectAccess(orgId, projectId, user.id);
 
     const project = await prisma.project.findUnique({
       where: { id: projectId },
@@ -106,13 +106,14 @@ export async function GET(
 
     return NextResponse.json({ project });
   } catch (error) {
-    if (error instanceof Error && error.message === 'Access denied') {
-      return NextResponse.json(
-        { error: 'Access denied' },
-        { status: 403 }
-      );
+    if (error instanceof Error) {
+      if (error.message === 'Access denied') {
+        return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+      }
+      if (error.message === 'Project not found') {
+        return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+      }
     }
-
     return NextResponse.json(
       { error: 'Failed to fetch project' },
       { status: 500 }

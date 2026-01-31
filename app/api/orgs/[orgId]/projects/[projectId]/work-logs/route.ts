@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { requireAuth, requireOrgAccess } from '@/lib/auth';
+import { requireAuth, requireOrgAccess, requireOrgRole } from '@/lib/auth';
+import type { Prisma } from '@/app/generated/prisma/client';
 
 export async function GET(
   request: Request,
@@ -10,6 +11,15 @@ export async function GET(
     const { orgId, projectId } = await params;
     const user = await requireAuth();
     await requireOrgAccess(orgId, user.id);
+    await requireOrgRole(orgId, user.id, ['ADMIN', 'MAINTAINER']);
+
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+      select: { orgId: true },
+    });
+    if (!project || project.orgId !== orgId) {
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
 
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1', 10);
@@ -18,29 +28,26 @@ export async function GET(
     const search = searchParams.get('search') || '';
     const sortBy = searchParams.get('sortBy') || 'createdAt';
     const sortOrder = searchParams.get('sortOrder') || 'desc';
-    const userId = searchParams.get('userId');
+    const userIdParam = searchParams.get('userId');
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
 
-    const whereClause: any = {
+    const whereClause: Prisma.WorkLogWhereInput = {
       orgId,
       projectId,
     };
-
-    if (userId) {
-      whereClause.userId = userId;
+    if (userIdParam) {
+      whereClause.userId = userIdParam;
     }
-
     if (startDate || endDate) {
       whereClause.createdAt = {};
       if (startDate) {
-        whereClause.createdAt.gte = new Date(startDate);
+        (whereClause.createdAt as Prisma.DateTimeFilter<'WorkLog'>).gte = new Date(startDate);
       }
       if (endDate) {
-        whereClause.createdAt.lte = new Date(endDate);
+        (whereClause.createdAt as Prisma.DateTimeFilter<'WorkLog'>).lte = new Date(endDate);
       }
     }
-
     if (search) {
       whereClause.user = {
         OR: [
@@ -50,7 +57,7 @@ export async function GET(
       };
     }
 
-    const orderByClause: any = {};
+    const orderByClause: Record<string, unknown> = {};
     if (sortBy === 'date') {
       orderByClause.createdAt = sortOrder;
     } else if (sortBy === 'duration') {
@@ -80,9 +87,7 @@ export async function GET(
             },
           },
           segments: {
-            orderBy: {
-              startDt: 'asc',
-            },
+            orderBy: { startDt: 'asc' },
           },
         },
         skip,
@@ -107,8 +112,11 @@ export async function GET(
     });
   } catch (error) {
     if (error instanceof Error) {
-      if (error.message === 'Access denied' || error.message === 'Insufficient permissions') {
-        return NextResponse.json({ error: error.message }, { status: 403 });
+      if (error.message === 'Access denied') {
+        return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+      }
+      if (error.message === 'Insufficient permissions') {
+        return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
       }
     }
     return NextResponse.json({ error: 'Failed to fetch work logs' }, { status: 500 });
