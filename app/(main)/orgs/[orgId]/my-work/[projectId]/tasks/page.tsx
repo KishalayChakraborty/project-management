@@ -93,11 +93,13 @@ export default function MemberTasksPage() {
   const debouncedSearch = useDebounce(search, 500);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [deadlineFilter, setDeadlineFilter] = useState<string>('all');
-  const [sortBy, setSortBy] = useState<'priority' | 'deadline' | 'created'>('deadline');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [sortBy, setSortBy] = useState<'priority' | 'deadline' | 'created'>('created');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   const { data: tasks, isLoading } = useTasks(orgId, projectId, {
     assigneeId: userId ?? undefined,
+    sortBy,
+    sortOrder,
   });
 
   const filteredTasks = (tasks ?? [])
@@ -126,23 +128,6 @@ export default function MemberTasksPage() {
         if (task.deadlineDt) return false;
       }
       return true;
-    })
-    .sort((a, b) => {
-      let compare = 0;
-      if (sortBy === 'priority') {
-        const order = { P0: 0, P1: 1, P2: 2, P3: 3, P4: 4 };
-        compare =
-          (order[a.priority as keyof typeof order] ?? 5) -
-          (order[b.priority as keyof typeof order] ?? 5);
-      } else if (sortBy === 'deadline') {
-        const ad = a.deadlineDt ? new Date(a.deadlineDt).getTime() : Infinity;
-        const bd = b.deadlineDt ? new Date(b.deadlineDt).getTime() : Infinity;
-        compare = ad - bd;
-      } else {
-        compare =
-          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-      }
-      return sortOrder === 'asc' ? compare : -compare;
     });
 
   const tasksPerPage = 10;

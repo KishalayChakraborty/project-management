@@ -39,8 +39,8 @@ export default function ProjectTasksPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
   const [assigneeFilter, setAssigneeFilter] = useState<string>('all');
-  const [sortBy, setSortBy] = useState<'priority' | 'deadline' | 'created'>('priority');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [sortBy, setSortBy] = useState<'priority' | 'deadline' | 'created'>('created');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   const { data: userRole } = useUserRole(orgId);
   const isAdminOrMaintainer = userRole === 'ADMIN' || userRole === 'MAINTAINER';
@@ -49,6 +49,8 @@ export default function ProjectTasksPage() {
 
   const { data: tasks, isLoading } = useTasks(orgId, projectId, {
     status: statusFilter !== 'all' ? statusFilter : undefined,
+    sortBy,
+    sortOrder,
   });
 
   const projectTasks = tasks?.filter((t) => t.projectId === projectId) || [];
@@ -72,20 +74,6 @@ export default function ProjectTasksPage() {
             return false;
           }
           return true;
-        })
-        .sort((a, b) => {
-          let compare = 0;
-          if (sortBy === 'priority') {
-            const priorityOrder = { P0: 0, P1: 1, P2: 2, P3: 3, P4: 4 };
-            compare = (priorityOrder[a.priority as keyof typeof priorityOrder] ?? 5) - (priorityOrder[b.priority as keyof typeof priorityOrder] ?? 5);
-          } else if (sortBy === 'deadline') {
-            const aDeadline = a.deadlineDt ? new Date(a.deadlineDt).getTime() : Infinity;
-            const bDeadline = b.deadlineDt ? new Date(b.deadlineDt).getTime() : Infinity;
-            compare = aDeadline - bDeadline;
-          } else if (sortBy === 'created') {
-            compare = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-          }
-          return sortOrder === 'asc' ? compare : -compare;
         })
     : [];
 

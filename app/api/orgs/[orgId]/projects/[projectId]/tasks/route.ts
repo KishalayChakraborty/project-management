@@ -33,6 +33,8 @@ export async function GET(
     const parentTaskId = searchParams.get('parentTaskId');
     const status = searchParams.get('status');
     const assigneeId = searchParams.get('assigneeId');
+    const sortBy = searchParams.get('sortBy');
+    const sortOrder = searchParams.get('sortOrder') === 'asc' ? 'asc' : 'desc';
 
     const project = await prisma.project.findUnique({
       where: { id: projectId },
@@ -96,11 +98,14 @@ export async function GET(
           },
         },
       },
-      orderBy: [
-        { priority: 'asc' },
-        { deadlineDt: 'asc' },
-        { createdAt: 'desc' },
-      ],
+      orderBy: sortBy === 'priority'
+        ? { priority: sortOrder }
+        : sortBy === 'deadline'
+          ? [
+            { deadlineDt: sortOrder === 'asc' ? 'asc' : 'desc' },
+            { createdAt: 'desc' }
+          ]
+          : { createdAt: sortOrder },
     });
 
     return NextResponse.json({ tasks });

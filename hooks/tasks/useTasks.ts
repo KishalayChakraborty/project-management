@@ -75,6 +75,8 @@ export function useTasks(
     parentTaskId?: string | null;
     status?: string;
     assigneeId?: string;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
   }
 ) {
   return useQuery({
@@ -87,6 +89,8 @@ export function useTasks(
       }
       if (filters?.status) params.set('status', filters.status);
       if (filters?.assigneeId) params.set('assigneeId', filters.assigneeId);
+      if (filters?.sortBy) params.set('sortBy', filters.sortBy);
+      if (filters?.sortOrder) params.set('sortOrder', filters.sortOrder);
 
       const { data } = await api.get<{ tasks: Task[] }>(
         `/orgs/${orgId}/projects/${projectId}/tasks?${params.toString()}`
