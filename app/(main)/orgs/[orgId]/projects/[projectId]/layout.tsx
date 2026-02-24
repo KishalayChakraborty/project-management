@@ -89,11 +89,11 @@ export default function ProjectLayout({
       icon: Clock,
       href: `${basePath}/work-logs`,
     },
-    {
-      title: 'Audit',
-      icon: FileText,
-      href: `${basePath}/audit`,
-    },
+    // {
+    //   title: 'Audit',
+    //   icon: FileText,
+    //   href: `${basePath}/audit`,
+    // },
     ...(isAdminOrMaintainer
       ? [
           {
