@@ -24,7 +24,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { ArrowUpDown, ArrowUp, ArrowDown, Plus } from 'lucide-react';
+import { ArrowUpDown, ArrowUp, ArrowDown, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
 export default function MemberWorkLogsPage() {
@@ -214,7 +214,7 @@ export default function MemberWorkLogsPage() {
               </div>
             ) : (
               <>
-                <div className="rounded-md border">
+                <div className="rounded-md border max-h-[60vh] overflow-y-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -287,33 +287,35 @@ export default function MemberWorkLogsPage() {
                   </Table>
                 </div>
 
-                {workLogsData.pagination.totalPages > 1 && (
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm text-muted-foreground">
-                      Page {workLogsData.pagination.page} of{' '}
-                      {workLogsData.pagination.totalPages} (
-                      {workLogsData.pagination.total} logs)
-                    </div>
-                    <div className="flex gap-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    {workLogsData.pagination.hasPrev && (
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => setPage((p) => Math.max(1, p - 1))}
-                        disabled={!workLogsData.pagination.hasPrev}
                       >
+                        <ChevronLeft className="h-4 w-4 mr-1" />
                         Previous
                       </Button>
+                    )}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Page {workLogsData.pagination.page} of {workLogsData.pagination.totalPages}
+                  </div>
+                  <div>
+                    {workLogsData.pagination.hasNext && (
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => setPage((p) => p + 1)}
-                        disabled={!workLogsData.pagination.hasNext}
                       >
                         Next
+                        <ChevronRight className="h-4 w-4 ml-1" />
                       </Button>
-                    </div>
+                    )}
                   </div>
-                )}
+                </div>
               </>
             )}
           </div>

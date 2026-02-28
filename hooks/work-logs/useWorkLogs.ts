@@ -53,14 +53,16 @@ export function useWorkLogs(
   sortOrder: 'asc' | 'desc' = 'desc',
   userId?: string,
   startDate?: string,
-  endDate?: string
+  endDate?: string,
+  limit: number = 25
 ) {
   return useQuery<WorkLogPagination | null>({
-    queryKey: ['workLogs', orgId, projectId, page, search, sortBy, sortOrder, userId, startDate, endDate],
+    queryKey: ['workLogs', orgId, projectId, page, search, sortBy, sortOrder, userId, startDate, endDate, limit],
     queryFn: async () => {
       if (!orgId || !projectId) return null;
       const params = new URLSearchParams({
         page: page.toString(),
+        limit: limit.toString(),
         search,
         sortBy,
         sortOrder,
@@ -86,14 +88,16 @@ export function useMyWorkLogs(
   sortBy: string = 'createdAt',
   sortOrder: 'asc' | 'desc' = 'desc',
   startDate?: string,
-  endDate?: string
+  endDate?: string,
+  limit: number = 25
 ) {
   return useQuery<WorkLogPagination | null>({
-    queryKey: ['workLogs', 'mine', orgId, projectId, userId, page, sortBy, sortOrder, startDate, endDate],
+    queryKey: ['workLogs', 'mine', orgId, projectId, userId, page, sortBy, sortOrder, startDate, endDate, limit],
     queryFn: async () => {
       if (!orgId || !projectId) return null;
       const params = new URLSearchParams({
         page: page.toString(),
+        limit: limit.toString(),
         sortBy,
         sortOrder,
       });
