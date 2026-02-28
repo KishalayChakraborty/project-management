@@ -53,11 +53,6 @@ export default function TaskDetailPage() {
   const removeDependency = useRemoveTaskDependency(orgId, projectId, taskId);
 
   const members = teamMembersData?.members ?? [];
-  const detail = task as TaskDetail;
-  const blockedByIds = new Set(detail.dependencies?.map((d) => d.blockedByTask.id) ?? []);
-  const availableBlockingTasks = (projectTasks ?? []).filter(
-    (t) => t.id !== taskId && !blockedByIds.has(t.id)
-  );
 
   useEffect(() => {
     if (roleLoading || userRole === undefined) return;
@@ -97,6 +92,12 @@ export default function TaskDetailPage() {
       </div>
     );
   }
+
+  const detail = task as TaskDetail;
+  const blockedByIds = new Set(detail.dependencies?.map((d) => d.blockedByTask.id) ?? []);
+  const availableBlockingTasks = (projectTasks ?? []).filter(
+    (t) => t.id !== taskId && !blockedByIds.has(t.id)
+  );
 
   return (
     <div className="space-y-4">
