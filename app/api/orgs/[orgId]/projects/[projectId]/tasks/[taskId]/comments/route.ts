@@ -25,9 +25,15 @@ export async function GET(
             return NextResponse.json({ error: 'Task not found' }, { status: 404 });
         }
 
+        const url = new URL(request.url);
+        const cursor = url.searchParams.get('cursor');
+        const limit = Math.min(Number(url.searchParams.get('limit')) || 10, 50);
+
         const comments = await prisma.taskComment.findMany({
             where: { taskId },
-            orderBy: { createdAt: 'asc' },
+            orderBy: { createdAt: 'desc' },
+            take: limit + 1,
+            ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
             include: {
                 user: {
                     select: {
@@ -39,7 +45,13 @@ export async function GET(
             },
         });
 
-        return NextResponse.json({ comments });
+        let nextCursor: string | null = null;
+        if (comments.length > limit) {
+            const next = comments.pop();
+            nextCursor = next!.id;
+        }
+
+        return NextResponse.json({ comments, nextCursor });
     } catch (error) {
         if (error instanceof Error && error.message === 'Access denied') {
             return NextResponse.json({ error: 'Access denied' }, { status: 403 });

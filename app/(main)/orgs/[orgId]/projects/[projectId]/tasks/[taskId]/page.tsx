@@ -55,12 +55,13 @@ export default function TaskDetailPage() {
   const updateReviewer = useUpdateTaskReviewer(orgId, projectId, taskId);
   const addDependency = useAddTaskDependency(orgId, projectId, taskId);
   const removeDependency = useRemoveTaskDependency(orgId, projectId, taskId);
-  const { data: comments, isLoading: commentsLoading } = useTaskComments(orgId, projectId, taskId);
+  const { data: commentsData, isLoading: commentsLoading, hasNextPage, fetchNextPage, isFetchingNextPage } = useTaskComments(orgId, projectId, taskId);
   const addComment = useAddTaskComment(orgId, projectId, taskId);
   const deleteComment = useDeleteTaskComment(orgId, projectId, taskId);
   const { data: session } = useSession();
 
   const members = teamMembersData?.members ?? [];
+  const allComments = commentsData?.pages.flatMap((p) => p.comments) ?? [];
 
   useEffect(() => {
     if (roleLoading || userRole === undefined) return;
@@ -359,13 +360,13 @@ export default function TaskDetailPage() {
         </Card>
       </div>
 
-      <Card className="w-[360px] shrink-0 self-start">
-        <CardHeader>
+      <Card className="w-[360px] shrink-0 sticky top-4 flex flex-col max-h-screen">
+        <CardHeader className="shrink-0">
           <CardTitle>Comments</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="flex flex-col gap-4 overflow-hidden flex-1">
           <form
-            className="flex gap-2"
+            className="flex gap-2 shrink-0"
             onSubmit={(e) => {
               e.preventDefault();
               const trimmed = commentText.trim();
@@ -390,40 +391,53 @@ export default function TaskDetailPage() {
             </Button>
           </form>
 
-          {commentsLoading ? (
-            <p className="text-sm text-muted-foreground">Loading comments...</p>
-          ) : !comments || comments.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No comments yet.</p>
-          ) : (
-            <ul className="space-y-3 max-h-[500px] overflow-y-auto">
-              {comments.map((c) => (
-                <li key={c.id} className="border rounded-md p-3 space-y-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">
-                      {c.user.name || c.user.email}
-                    </span>
-                    {(c.userId === session?.user?.id ||
-                      userRole === 'ADMIN' ||
-                      userRole === 'MAINTAINER') && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 w-6 p-0"
-                        onClick={() => deleteComment.mutate(c.id)}
-                        disabled={deleteComment.isPending}
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    )}
-                  </div>
-                  <p className="text-sm whitespace-pre-wrap">{c.content}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {new Date(c.createdAt).toLocaleString()}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          )}
+          <div className="overflow-y-auto flex-1">
+            {commentsLoading ? (
+              <p className="text-sm text-muted-foreground">Loading comments...</p>
+            ) : !allComments || allComments.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No comments yet.</p>
+            ) : (
+              <ul className="space-y-3">
+                {allComments.map((c) => (
+                  <li key={c.id} className="border rounded-md p-3 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">
+                        {c.user.name || c.user.email}
+                      </span>
+                      {(c.userId === session?.user?.id ||
+                        userRole === 'ADMIN' ||
+                        userRole === 'MAINTAINER') && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                          onClick={() => deleteComment.mutate(c.id)}
+                          disabled={deleteComment.isPending}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      )}
+                    </div>
+                    <p className="text-sm whitespace-pre-wrap">{c.content}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(c.createdAt).toLocaleString()}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {hasNextPage && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full mt-2"
+                onClick={() => fetchNextPage()}
+                disabled={isFetchingNextPage}
+              >
+                {isFetchingNextPage ? 'Loading...' : 'Load more'}
+              </Button>
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>

@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/axios';
 
 export interface TaskComment {
@@ -14,20 +14,30 @@ export interface TaskComment {
     };
 }
 
+interface CommentsPage {
+    comments: TaskComment[];
+    nextCursor: string | null;
+}
+
 export function useTaskComments(
     orgId: string | null,
     projectId: string | null,
     taskId: string | null
 ) {
-    return useQuery({
+    return useInfiniteQuery({
         queryKey: ['taskComments', orgId, projectId, taskId],
-        queryFn: async () => {
-            if (!orgId || !projectId || !taskId) return [];
-            const { data } = await api.get<{ comments: TaskComment[] }>(
-                `/orgs/${orgId}/projects/${projectId}/tasks/${taskId}/comments`
+        queryFn: async ({ pageParam }: { pageParam: string | undefined }) => {
+            if (!orgId || !projectId || !taskId)
+                return { comments: [], nextCursor: null } as CommentsPage;
+            const params = new URLSearchParams({ limit: '10' });
+            if (pageParam) params.set('cursor', pageParam);
+            const { data } = await api.get<CommentsPage>(
+                `/orgs/${orgId}/projects/${projectId}/tasks/${taskId}/comments?${params.toString()}`
             );
-            return data.comments;
+            return data;
         },
+        initialPageParam: undefined as string | undefined,
+        getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
         enabled: !!orgId && !!projectId && !!taskId,
     });
 }
