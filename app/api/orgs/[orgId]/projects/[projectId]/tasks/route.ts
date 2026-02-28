@@ -66,49 +66,64 @@ export async function GET(
       where.assigneeUserId = assigneeId;
     }
 
-    const tasks = await prisma.task.findMany({
-      where,
-      include: {
-        project: {
-          select: {
-            id: true,
-            name: true,
-            code: true,
-          },
-        },
-        assignee: {
-          select: {
-            id: true,
-            email: true,
-            name: true,
-          },
-        },
-        reviewer: {
-          select: {
-            id: true,
-            email: true,
-            name: true,
-          },
-        },
-        _count: {
-          select: {
-            children: true,
-            dependencies: true,
-            blockingTasks: true,
-          },
-        },
-      },
-      orderBy: sortBy === 'priority'
-        ? { priority: sortOrder }
-        : sortBy === 'deadline'
-          ? [
-            { deadlineDt: sortOrder === 'asc' ? 'asc' : 'desc' },
-            { createdAt: 'desc' }
-          ]
-          : { createdAt: sortOrder },
-    });
+    const page = Math.max(1, Number(searchParams.get('page')) || 1);
+    const limit = Math.min(Math.max(1, Number(searchParams.get('limit')) || 10), 50);
+    const skip = (page - 1) * limit;
 
-    return NextResponse.json({ tasks });
+    const order = sortOrder as Prisma.SortOrder;
+
+    const orderBy: Prisma.TaskOrderByWithRelationInput | Prisma.TaskOrderByWithRelationInput[] = sortBy === 'priority'
+      ? { priority: order }
+      : sortBy === 'deadline'
+        ? [
+          { deadlineDt: order },
+          { createdAt: 'desc' as Prisma.SortOrder }
+        ]
+        : { createdAt: order };
+
+    const [tasks, total] = await Promise.all([
+      prisma.task.findMany({
+        where,
+        include: {
+          project: {
+            select: {
+              id: true,
+              name: true,
+              code: true,
+            },
+          },
+          assignee: {
+            select: {
+              id: true,
+              email: true,
+              name: true,
+            },
+          },
+          reviewer: {
+            select: {
+              id: true,
+              email: true,
+              name: true,
+            },
+          },
+          _count: {
+            select: {
+              children: true,
+              dependencies: true,
+              blockingTasks: true,
+            },
+          },
+        },
+        orderBy,
+        skip,
+        take: limit,
+      }),
+      prisma.task.count({ where }),
+    ]);
+
+    const totalPages = Math.ceil(total / limit);
+
+    return NextResponse.json({ tasks, total, page, totalPages });
   } catch (error) {
     if (error instanceof Error && error.message === 'Access denied') {
       return NextResponse.json(

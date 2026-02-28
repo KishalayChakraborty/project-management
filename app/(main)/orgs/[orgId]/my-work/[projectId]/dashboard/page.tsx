@@ -45,11 +45,11 @@ export default function MemberDashboardPage() {
   const userId = session?.user?.id;
 
   const { data: project, isLoading: projectLoading } = useProject(orgId, projectId);
-  const { data: tasks, isLoading: tasksLoading } = useTasks(orgId, projectId, {
+  const { data: tasksData, isLoading: tasksLoading } = useTasks(orgId, projectId, {
     assigneeId: userId ?? undefined,
   });
 
-  const myTasks = tasks ?? [];
+  const myTasks = tasksData?.tasks ?? [];
   const todoCount = myTasks.filter((t) => t.status === 'TODO' || t.status === 'BACKLOG').length;
   const inProgressCount = myTasks.filter((t) => t.status === 'IN_PROGRESS').length;
   const doneCount = myTasks.filter((t) => t.status === 'DONE').length;

@@ -68,6 +68,13 @@ export interface CreateTaskInput {
   deadlineDt?: string;
 }
 
+export interface TasksResponse {
+  tasks: Task[];
+  total: number;
+  page: number;
+  totalPages: number;
+}
+
 export function useTasks(
   orgId: string | null,
   projectId: string | null,
@@ -77,12 +84,14 @@ export function useTasks(
     assigneeId?: string;
     sortBy?: string;
     sortOrder?: 'asc' | 'desc';
+    page?: number;
+    limit?: number;
   }
 ) {
   return useQuery({
     queryKey: ['tasks', orgId, projectId, filters],
     queryFn: async () => {
-      if (!orgId || !projectId) return [];
+      if (!orgId || !projectId) return { tasks: [], total: 0, page: 1, totalPages: 0 } as TasksResponse;
       const params = new URLSearchParams();
       if (filters?.parentTaskId !== undefined) {
         params.set('parentTaskId', filters.parentTaskId || '');
@@ -91,11 +100,13 @@ export function useTasks(
       if (filters?.assigneeId) params.set('assigneeId', filters.assigneeId);
       if (filters?.sortBy) params.set('sortBy', filters.sortBy);
       if (filters?.sortOrder) params.set('sortOrder', filters.sortOrder);
+      if (filters?.page) params.set('page', String(filters.page));
+      if (filters?.limit) params.set('limit', String(filters.limit));
 
-      const { data } = await api.get<{ tasks: Task[] }>(
+      const { data } = await api.get<TasksResponse>(
         `/orgs/${orgId}/projects/${projectId}/tasks?${params.toString()}`
       );
-      return data.tasks;
+      return data;
     },
     enabled: !!orgId && !!projectId,
   });

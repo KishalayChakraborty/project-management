@@ -49,7 +49,7 @@ export default function TaskDetailPage() {
 
   const { data: task, isLoading } = useTask(orgId, projectId, taskId);
   const { data: userRole, isLoading: roleLoading } = useUserRole(orgId);
-  const { data: projectTasks } = useTasks(orgId, projectId);
+  const { data: projectTasksData } = useTasks(orgId, projectId);
   const { data: teamMembersData } = useProjectTeamMembers(orgId, projectId);
   const updateAssignee = useUpdateTaskAssignee(orgId, projectId, taskId);
   const updateReviewer = useUpdateTaskReviewer(orgId, projectId, taskId);
@@ -104,7 +104,7 @@ export default function TaskDetailPage() {
 
   const detail = task as TaskDetail;
   const blockedByIds = new Set(detail.dependencies?.map((d) => d.blockedByTask.id) ?? []);
-  const availableBlockingTasks = (projectTasks ?? []).filter(
+  const availableBlockingTasks = (projectTasksData?.tasks ?? []).filter(
     (t) => t.id !== taskId && !blockedByIds.has(t.id)
   );
 

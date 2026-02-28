@@ -25,7 +25,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { CreateTaskDialog } from '@/components/tasks/CreateTaskDialog';
-import { ArrowUpDown, ArrowUp, ArrowDown, Plus } from 'lucide-react';
+import { ArrowUpDown, ArrowUp, ArrowDown, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function ProjectTasksPage() {
   const params = useParams();
@@ -47,48 +47,45 @@ export default function ProjectTasksPage() {
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
-  const { data: tasks, isLoading } = useTasks(orgId, projectId, {
+  const { data: tasksData, isLoading } = useTasks(orgId, projectId, {
     status: statusFilter !== 'all' ? statusFilter : undefined,
     sortBy,
     sortOrder,
+    page,
+    limit: 10,
   });
 
-  const projectTasks = tasks?.filter((t) => t.projectId === projectId) || [];
+  const tasks = tasksData?.tasks ?? [];
+  const totalPages = tasksData?.totalPages ?? 0;
+  const currentPage = tasksData?.page ?? 1;
 
-  const filteredTasks = tasks
-    ? tasks
-        .filter((task) => {
-          if (debouncedSearch) {
-            const searchLower = debouncedSearch.toLowerCase();
-            if (
-              !task.title.toLowerCase().includes(searchLower) &&
-              !task.description?.toLowerCase().includes(searchLower)
-            ) {
-              return false;
-            }
-          }
-          if (priorityFilter !== 'all' && task.priority !== priorityFilter) {
-            return false;
-          }
-          if (assigneeFilter !== 'all' && task.assigneeUserId !== assigneeFilter) {
-            return false;
-          }
-          return true;
-        })
-    : [];
-
-  const tasksPerPage = 10;
-  const totalPages = Math.ceil(filteredTasks.length / tasksPerPage);
-  const startIndex = (page - 1) * tasksPerPage;
-  const paginatedTasks = filteredTasks.slice(startIndex, startIndex + tasksPerPage);
+  // Client-side filtering for search, priority, assignee
+  const filteredTasks = tasks.filter((task) => {
+    if (debouncedSearch) {
+      const searchLower = debouncedSearch.toLowerCase();
+      if (
+        !task.title.toLowerCase().includes(searchLower) &&
+        !task.description?.toLowerCase().includes(searchLower)
+      ) {
+        return false;
+      }
+    }
+    if (priorityFilter !== 'all' && task.priority !== priorityFilter) {
+      return false;
+    }
+    if (assigneeFilter !== 'all' && task.assigneeUserId !== assigneeFilter) {
+      return false;
+    }
+    return true;
+  });
 
   const uniqueAssignees = Array.from(
-    new Set(tasks?.map((task) => task.assigneeUserId).filter((id): id is string => !!id) || [])
+    new Set(tasks.map((task) => task.assigneeUserId).filter((id): id is string => !!id))
   );
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, statusFilter, priorityFilter, assigneeFilter]);
+  }, [debouncedSearch, statusFilter, priorityFilter, assigneeFilter, sortBy, sortOrder]);
 
   const handleSort = (field: 'priority' | 'deadline' | 'created') => {
     if (sortBy === field) {
@@ -193,7 +190,7 @@ export default function ProjectTasksPage() {
                   <SelectContent>
                     <SelectItem value="all">All Assignees</SelectItem>
                     {uniqueAssignees.map((assigneeId) => {
-                      const task = tasks?.find((t) => t.assigneeUserId === assigneeId);
+                      const task = tasks.find((t) => t.assigneeUserId === assigneeId);
                       const displayName = task?.assignee?.name || task?.assignee?.email || 'Unassigned';
                       return (
                         <SelectItem key={assigneeId} value={assigneeId}>
@@ -208,13 +205,13 @@ export default function ProjectTasksPage() {
 
             {isLoading ? (
               <div className="text-center py-8">Loading tasks...</div>
-            ) : paginatedTasks.length === 0 ? (
+            ) : filteredTasks.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 No tasks found
               </div>
             ) : (
               <>
-                <div className="rounded-md border">
+                <div className="rounded-md border max-h-[60vh] overflow-y-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -258,7 +255,7 @@ export default function ProjectTasksPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {paginatedTasks.map((task) => (
+                      {filteredTasks.map((task) => (
                         <TableRow
                           key={task.id}
                           className="cursor-pointer"
@@ -297,31 +294,35 @@ export default function ProjectTasksPage() {
                   </Table>
                 </div>
 
-                {totalPages > 1 && (
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm text-muted-foreground">
-                      Page {page} of {totalPages} ({filteredTasks.length} tasks)
-                    </div>
-                    <div className="flex gap-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    {currentPage > 1 && (
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => setPage((p) => Math.max(1, p - 1))}
-                        disabled={page === 1}
                       >
+                        <ChevronLeft className="h-4 w-4 mr-1" />
                         Previous
                       </Button>
+                    )}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Page {currentPage} of {totalPages || 1}
+                  </div>
+                  <div>
+                    {currentPage < totalPages && (
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                        disabled={page === totalPages}
+                        onClick={() => setPage((p) => p + 1)}
                       >
                         Next
+                        <ChevronRight className="h-4 w-4 ml-1" />
                       </Button>
-                    </div>
+                    )}
                   </div>
-                )}
+                </div>
               </>
             )}
           </div>
@@ -333,7 +334,7 @@ export default function ProjectTasksPage() {
         onOpenChange={setIsCreateDialogOpen}
         orgId={orgId}
         projectId={projectId}
-        projectTasks={projectTasks.map((task) => ({
+        projectTasks={tasks.map((task) => ({
           id: task.id,
           title: task.title || '',
         }))}

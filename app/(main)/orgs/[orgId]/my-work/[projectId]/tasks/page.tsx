@@ -25,7 +25,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { ArrowUpDown, ArrowUp, ArrowDown, CheckSquare, Play } from 'lucide-react';
+import { ArrowUpDown, ArrowUp, ArrowDown, CheckSquare, Play, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const now = new Date();
 const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
@@ -97,48 +97,49 @@ export default function MemberTasksPage() {
   const [sortBy, setSortBy] = useState<'priority' | 'deadline' | 'created'>('created');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
-  const { data: tasks, isLoading } = useTasks(orgId, projectId, {
+  const { data: tasksData, isLoading } = useTasks(orgId, projectId, {
     assigneeId: userId ?? undefined,
     sortBy,
     sortOrder,
+    page,
+    limit: 10,
   });
 
-  const filteredTasks = (tasks ?? [])
-    .filter((task) => {
-      if (debouncedSearch) {
-        const q = debouncedSearch.toLowerCase();
-        if (
-          !task.title.toLowerCase().includes(q) &&
-          !(task.description?.toLowerCase().includes(q))
-        ) {
-          return false;
-        }
-      }
-      if (statusFilter === 'completed') {
-        if (task.status !== 'DONE') return false;
-      } else if (statusFilter === 'uncompleted') {
-        if (task.status === 'DONE' || task.status === 'ARCHIVED') return false;
-      } else if (statusFilter !== 'all') {
-        if (task.status !== statusFilter) return false;
-      }
-      if (deadlineFilter === 'overdue') {
-        if (!isOverdue(task)) return false;
-      } else if (deadlineFilter === 'due_this_week') {
-        if (!isDueThisWeek(task)) return false;
-      } else if (deadlineFilter === 'no_deadline') {
-        if (task.deadlineDt) return false;
-      }
-      return true;
-    });
+  const tasks = tasksData?.tasks ?? [];
+  const totalPages = tasksData?.totalPages ?? 0;
+  const currentPage = tasksData?.page ?? 1;
 
-  const tasksPerPage = 10;
-  const totalPages = Math.ceil(filteredTasks.length / tasksPerPage);
-  const startIndex = (page - 1) * tasksPerPage;
-  const paginatedTasks = filteredTasks.slice(startIndex, startIndex + tasksPerPage);
+  // Client-side filtering for search, status, deadline
+  const filteredTasks = tasks.filter((task) => {
+    if (debouncedSearch) {
+      const q = debouncedSearch.toLowerCase();
+      if (
+        !task.title.toLowerCase().includes(q) &&
+        !(task.description?.toLowerCase().includes(q))
+      ) {
+        return false;
+      }
+    }
+    if (statusFilter === 'completed') {
+      if (task.status !== 'DONE') return false;
+    } else if (statusFilter === 'uncompleted') {
+      if (task.status === 'DONE' || task.status === 'ARCHIVED') return false;
+    } else if (statusFilter !== 'all') {
+      if (task.status !== statusFilter) return false;
+    }
+    if (deadlineFilter === 'overdue') {
+      if (!isOverdue(task)) return false;
+    } else if (deadlineFilter === 'due_this_week') {
+      if (!isDueThisWeek(task)) return false;
+    } else if (deadlineFilter === 'no_deadline') {
+      if (task.deadlineDt) return false;
+    }
+    return true;
+  });
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, statusFilter, deadlineFilter]);
+  }, [debouncedSearch, statusFilter, deadlineFilter, sortBy, sortOrder]);
 
   const handleSort = (field: 'priority' | 'deadline' | 'created') => {
     if (sortBy === field) {
@@ -228,13 +229,13 @@ export default function MemberTasksPage() {
 
             {isLoading ? (
               <div className="text-center py-8">Loading tasks...</div>
-            ) : paginatedTasks.length === 0 ? (
+            ) : filteredTasks.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 No tasks found
               </div>
             ) : (
               <>
-                <div className="rounded-md border">
+                <div className="rounded-md border max-h-[60vh] overflow-y-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -277,7 +278,7 @@ export default function MemberTasksPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {paginatedTasks.map((task) => (
+                      {filteredTasks.map((task) => (
                         <TableRow key={task.id}>
                           <TableCell>
                             <Badge variant={getPriorityColor(task.priority)}>
@@ -314,31 +315,35 @@ export default function MemberTasksPage() {
                   </Table>
                 </div>
 
-                {totalPages > 1 && (
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm text-muted-foreground">
-                      Page {page} of {totalPages} ({filteredTasks.length} tasks)
-                    </div>
-                    <div className="flex gap-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    {currentPage > 1 && (
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => setPage((p) => Math.max(1, p - 1))}
-                        disabled={page === 1}
                       >
+                        <ChevronLeft className="h-4 w-4 mr-1" />
                         Previous
                       </Button>
+                    )}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Page {currentPage} of {totalPages || 1}
+                  </div>
+                  <div>
+                    {currentPage < totalPages && (
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                        disabled={page === totalPages}
+                        onClick={() => setPage((p) => p + 1)}
                       >
                         Next
+                        <ChevronRight className="h-4 w-4 ml-1" />
                       </Button>
-                    </div>
+                    )}
                   </div>
-                )}
+                </div>
               </>
             )}
           </div>

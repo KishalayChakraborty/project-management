@@ -43,7 +43,7 @@ export default function MemberWorkLogsPage() {
   const [logMinutes, setLogMinutes] = useState<string>('');
   const [logTaskId, setLogTaskId] = useState<string>('none');
 
-  const { data: myTasks } = useTasks(orgId, projectId, { assigneeId: userId ?? undefined });
+  const { data: myTasksData } = useTasks(orgId, projectId, { assigneeId: userId ?? undefined });
   const createWorkLog = useCreateMyWorkLog(orgId, projectId);
 
   const { data: workLogsData, isLoading } = useMyWorkLogs(
@@ -105,6 +105,8 @@ export default function MemberWorkLogsPage() {
     );
   };
 
+  const myTasks = myTasksData?.tasks ?? [];
+
   return (
     <div className="space-y-4">
       <Card>
@@ -134,7 +136,7 @@ export default function MemberWorkLogsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">No task</SelectItem>
-                  {(myTasks ?? []).map((t) => (
+                  {myTasks.map((t) => (
                     <SelectItem key={t.id} value={t.id}>
                       {t.title}
                     </SelectItem>
