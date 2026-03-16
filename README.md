@@ -2,6 +2,31 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
+### Prerequisite: Node.js version
+
+This project requires Node.js `20.19.0` or newer (Prisma 7 and Next.js 16 are not compatible with Node 18).
+
+Quick setup with nvm:
+
+```bash
+nvm install 20.19.0
+nvm use 20.19.0
+```
+
+### Environment variables
+
+Create your local environment file:
+
+```bash
+cp .env.example .env.local
+```
+
+Then set at least:
+
+- `NEXTAUTH_URL` (for local dev: `http://localhost:3000`)
+- `NEXTAUTH_SECRET` (use a strong random string)
+- `DATABASE_URL` (your Postgres connection string)
+
 First, run the development server:
 
 ```bash
