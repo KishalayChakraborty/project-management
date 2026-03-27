@@ -1,10 +1,15 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import cc from "currency-codes";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { useCreateProject } from '@/hooks/projects';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,6 +37,25 @@ import {
   FormControl,
   FormMessage,
 } from "@/components/ui/form";
+
+const currencies = cc.data.map((c) => ({
+  value: c.code,
+  label: `${c.code} - ${c.currency}`,
+}));
+
+const getDefaultDates = () => {
+  const now = new Date();
+  const offset = now.getTimezoneOffset() * 60000;
+  
+  const localNow = new Date(now.getTime() - offset);
+  const startDate = localNow.toISOString().slice(0, 10);
+  
+  const deadlineDate = new Date(now.getTime() + 15 * 24 * 60 * 60 * 1000);
+  const localDeadline = new Date(deadlineDate.getTime() - offset);
+  const deadline = localDeadline.toISOString().slice(0, 10);
+  
+  return { startDate, deadline };
+};
 
 const createProjectSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -61,12 +85,14 @@ export function CreateProjectDialog({
 }: CreateProjectDialogProps) {
   const router = useRouter();
   const createProject = useCreateProject(orgId);
+  const [openCurrency, setOpenCurrency] = useState(false);
 
   const form = useForm<CreateProjectForm>({
     resolver: zodResolver(createProjectSchema),
     defaultValues: {
-      currency: "USD",
+      currency: "INR",
       status: "PLANNED",
+      ...getDefaultDates(),
     },
   });
 
@@ -75,8 +101,9 @@ export function CreateProjectDialog({
   useEffect(() => {
     if (open) {
       reset({
-        currency: "USD",
+        currency: "INR",
         status: "PLANNED",
+        ...getDefaultDates(),
       });
     }
   }, [open, reset]);
@@ -91,7 +118,7 @@ export function CreateProjectDialog({
         startDate: data.startDate,
         deadline: data.deadline,
         budgetTotal: data.budgetTotal,
-        currency: data.currency ?? "USD",
+        currency: data.currency ?? "INR",
       });
 
       reset();
@@ -207,7 +234,7 @@ export function CreateProjectDialog({
                       <FormItem>
                         <FormLabel>Start Date</FormLabel>
                         <FormControl>
-                          <Input type="datetime-local" {...field} />
+                          <Input type="date" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -221,7 +248,7 @@ export function CreateProjectDialog({
                       <FormItem>
                         <FormLabel>Deadline</FormLabel>
                         <FormControl>
-                          <Input type="datetime-local" {...field} />
+                          <Input type="date" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -260,11 +287,59 @@ export function CreateProjectDialog({
                     control={form.control}
                     name="currency"
                     render={({ field }) => (
-                      <FormItem>
+                      <FormItem className="flex flex-col mt-2.5">
                         <FormLabel>Currency</FormLabel>
-                        <FormControl>
-                          <Input placeholder="USD" {...field} />
-                        </FormControl>
+                        <Popover open={openCurrency} onOpenChange={setOpenCurrency}>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant="outline"
+                                role="combobox"
+                                className={cn(
+                                  "w-full justify-between font-normal",
+                                  !field.value && "text-muted-foreground"
+                                )}
+                              >
+                                {field.value
+                                  ? currencies.find(
+                                      (c) => c.value === field.value
+                                    )?.label
+                                  : "Select currency"}
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-[300px] p-0" align="start">
+                            <Command>
+                              <CommandInput placeholder="Search currency..." />
+                              <CommandList className="max-h-[200px] overflow-y-auto">
+                                <CommandEmpty>No currency found.</CommandEmpty>
+                                <CommandGroup>
+                                  {currencies.map((currency) => (
+                                    <CommandItem
+                                      value={currency.label}
+                                      key={currency.value}
+                                      onSelect={() => {
+                                        form.setValue("currency", currency.value);
+                                        setOpenCurrency(false);
+                                      }}
+                                    >
+                                      <Check
+                                        className={cn(
+                                          "mr-2 h-4 w-4",
+                                          currency.value === field.value
+                                            ? "opacity-100"
+                                            : "opacity-0"
+                                        )}
+                                      />
+                                      {currency.label}
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
                         <FormMessage />
                       </FormItem>
                     )}
