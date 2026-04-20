@@ -7,8 +7,10 @@ import {
   useOrganizationMembers,
   useUserRole,
 } from '@/hooks/organization';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useDebounce } from '@/hooks/useDebounce';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   Table,
   TableBody,
@@ -18,17 +20,34 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { InviteMemberDialog } from '@/components/organization/InviteMemberDialog';
+import { Search, ArrowUpDown, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function MembersPage() {
   const params = useParams();
   const router = useRouter();
   const orgId = params.orgId as string;
-  const [membersPage, setMembersPage] = useState(1);
+
+  const [page, setPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sort, setSort] = useState<'asc' | 'desc'>('desc');
   const [isInviteMemberDialogOpen, setIsInviteMemberDialogOpen] = useState(false);
+
+  const debouncedSearch = useDebounce(searchQuery, 400);
 
   const { data: org, isLoading: orgLoading } = useOrganization(orgId);
   const { data: userRole, isLoading: roleLoading } = useUserRole(orgId);
-  const { data: membersData, isLoading: membersLoading } = useOrganizationMembers(orgId, membersPage);
+  const { data: membersData, isLoading: membersLoading } = useOrganizationMembers(
+    orgId,
+    page,
+    debouncedSearch,
+    sort,
+    20
+  );
+
+  // Reset to page 1 when search or sort changes
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, sort]);
 
   useEffect(() => {
     if (!roleLoading && userRole) {
@@ -54,6 +73,8 @@ export default function MembersPage() {
     return <div>Access denied. Insufficient permissions.</div>;
   }
 
+  const pagination = membersData?.pagination;
+
   return (
     <div className="space-y-6">
       <div>
@@ -69,68 +90,94 @@ export default function MembersPage() {
               Invite Member
             </Button>
           </div>
+          <div className="flex items-center gap-2 pt-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by name or email..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-8"
+              />
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSort(sort === 'desc' ? 'asc' : 'desc')}
+              className="flex items-center gap-1 shrink-0"
+            >
+              <ArrowUpDown className="h-4 w-4" />
+              {sort === 'desc' ? 'Newest first' : 'Oldest first'}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {membersLoading ? (
-            <div>Loading members...</div>
+            <div className="text-center py-8 text-muted-foreground">Loading members...</div>
           ) : membersData && membersData.members.length > 0 ? (
-            <div className="space-y-4">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Joined</TableHead>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Joined</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {membersData.members.map((member: any) => (
+                  <TableRow key={member.user.id}>
+                    <TableCell className="font-medium">
+                      {member.user.name || 'N/A'}
+                    </TableCell>
+                    <TableCell>{member.user.email}</TableCell>
+                    <TableCell>{member.role}</TableCell>
+                    <TableCell>
+                      {new Date(member.joinedAt).toLocaleDateString()}
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {membersData.members.map((member: any) => (
-                    <TableRow key={member.user.id}>
-                      <TableCell className="font-medium">
-                        {member.user.name || 'N/A'}
-                      </TableCell>
-                      <TableCell>{member.user.email}</TableCell>
-                      <TableCell>{member.role}</TableCell>
-                      <TableCell>
-                        {new Date(member.joinedAt).toLocaleDateString()}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-
-              {membersData.pagination && membersData.pagination.totalPages > 1 && (
-                <div className="flex items-center justify-between">
-                  <div className="text-sm text-muted-foreground">
-                    Page {membersData.pagination.page} of {membersData.pagination.totalPages}{' '}
-                    ({membersData.pagination.total} total)
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setMembersPage((p) => Math.max(1, p - 1))}
-                      disabled={!membersData.pagination.hasPrev}
-                    >
-                      Previous
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setMembersPage((p) => p + 1)}
-                      disabled={!membersData.pagination.hasNext}
-                    >
-                      Next
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </div>
+                ))}
+              </TableBody>
+            </Table>
           ) : (
-            <p className="text-muted-foreground">No members yet</p>
+            <p className="text-center py-8 text-muted-foreground">
+              {debouncedSearch ? 'No members match your search' : 'No members yet'}
+            </p>
           )}
         </CardContent>
+        {pagination && pagination.totalPages > 1 && (
+          <CardFooter className="flex items-center justify-between border-t px-6 py-4">
+            {pagination.hasPrev ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                className="flex items-center gap-1"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Previous
+              </Button>
+            ) : (
+              <div />
+            )}
+            <span className="text-sm text-muted-foreground">
+              Page {pagination.page} of {pagination.totalPages} ({pagination.total} total)
+            </span>
+            {pagination.hasNext ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => p + 1)}
+                className="flex items-center gap-1"
+              >
+                Next
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            ) : (
+              <div />
+            )}
+          </CardFooter>
+        )}
       </Card>
 
       <InviteMemberDialog

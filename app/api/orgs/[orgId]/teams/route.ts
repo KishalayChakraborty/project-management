@@ -17,27 +17,59 @@ export async function GET(
     const user = await requireAuth();
     await requireOrgAccess(orgId, user.id);
 
-    const teams = await prisma.team.findMany({
-      where: { orgId },
-      include: {
-        creator: {
-          select: {
-            id: true,
-            email: true,
-            name: true,
-          },
-        },
-        _count: {
-          select: {
-            members: true,
-            projectLinks: true,
-          },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get('page') || '1', 10);
+    const limit = parseInt(searchParams.get('limit') || '20', 10);
+    const search = searchParams.get('search') || '';
+    const sort = searchParams.get('sort') === 'asc' ? 'asc' : 'desc';
+    const skip = (page - 1) * limit;
 
-    return NextResponse.json({ teams });
+    const where: any = { orgId };
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    const [teams, total] = await Promise.all([
+      prisma.team.findMany({
+        where,
+        include: {
+          creator: {
+            select: {
+              id: true,
+              email: true,
+              name: true,
+            },
+          },
+          _count: {
+            select: {
+              members: true,
+              projectLinks: true,
+            },
+          },
+        },
+        skip,
+        take: limit,
+        orderBy: { createdAt: sort },
+      }),
+      prisma.team.count({ where }),
+    ]);
+
+    const totalPages = Math.ceil(total / limit);
+
+    return NextResponse.json({
+      teams,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1,
+      },
+    });
   } catch (error) {
     if (error instanceof Error && error.message === 'Access denied') {
       return NextResponse.json(

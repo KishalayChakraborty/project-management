@@ -43,7 +43,7 @@ export default function ProjectTeamsPage() {
 
   const { data: userRole, isLoading: roleLoading } = useUserRole(orgId);
   const { data: projectTeams, isLoading: teamsLoading } = useProjectTeams(orgId, projectId);
-  const { data: orgTeams, isLoading: orgTeamsLoading } = useOrganizationTeams(orgId);
+  const { data: orgTeamsData, isLoading: orgTeamsLoading } = useOrganizationTeams(orgId);
   const assignTeam = useAssignTeamToProject(orgId, projectId);
   const removeTeam = useRemoveTeamFromProject(orgId, projectId);
   const { toast } = useToast();
@@ -65,13 +65,14 @@ export default function ProjectTeamsPage() {
   }
 
   const assignedTeamIds = new Set(projectTeams?.map((t) => t.id) || []);
-  const availableTeams = orgTeams?.filter(
-    (team) =>
+  const orgTeams = orgTeamsData?.teams || [];
+  const availableTeams = orgTeams.filter(
+    (team: any) =>
       !assignedTeamIds.has(team.id) &&
       (debouncedSearch === '' ||
         team.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
         team.description?.toLowerCase().includes(debouncedSearch.toLowerCase()))
-  ) || [];
+  );
 
   const filteredProjectTeams =
     projectTeams?.filter(

@@ -7,19 +7,39 @@ import {
   useOrganizationProjects,
   useUserRole,
 } from '@/hooks/organization';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useDebounce } from '@/hooks/useDebounce';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { CreateProjectDialog } from '@/components/projects/CreateProjectDialog';
+import { Search, ArrowUpDown, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function ProjectsPage() {
   const params = useParams();
   const router = useRouter();
   const orgId = params.orgId as string;
+
+  const [page, setPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sort, setSort] = useState<'asc' | 'desc'>('desc');
   const [isCreateProjectDialogOpen, setIsCreateProjectDialogOpen] = useState(false);
+
+  const debouncedSearch = useDebounce(searchQuery, 400);
 
   const { data: org, isLoading: orgLoading } = useOrganization(orgId);
   const { data: userRole, isLoading: roleLoading } = useUserRole(orgId);
-  const { data: projects, isLoading: projectsLoading } = useOrganizationProjects(orgId);
+  const { data: projectsData, isLoading: projectsLoading } = useOrganizationProjects(
+    orgId,
+    page,
+    debouncedSearch,
+    sort,
+    20
+  );
+
+  // Reset to page 1 when search or sort changes
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, sort]);
 
   useEffect(() => {
     if (!roleLoading && userRole) {
@@ -45,6 +65,9 @@ export default function ProjectsPage() {
     return <div>Access denied. Insufficient permissions.</div>;
   }
 
+  const projects = projectsData?.projects || [];
+  const pagination = projectsData?.pagination;
+
   return (
     <div className="space-y-6">
       <div>
@@ -60,11 +83,31 @@ export default function ProjectsPage() {
               Create Project
             </Button>
           </div>
+          <div className="flex items-center gap-2 pt-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by name, code, or description..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-8"
+              />
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSort(sort === 'desc' ? 'asc' : 'desc')}
+              className="flex items-center gap-1 shrink-0"
+            >
+              <ArrowUpDown className="h-4 w-4" />
+              {sort === 'desc' ? 'Newest first' : 'Oldest first'}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {projectsLoading ? (
-            <div>Loading projects...</div>
-          ) : projects && projects.length > 0 ? (
+            <div className="text-center py-8 text-muted-foreground">Loading projects...</div>
+          ) : projects.length > 0 ? (
             <div className="space-y-2">
               {projects.map((project: any) => (
                 <div
@@ -91,9 +134,44 @@ export default function ProjectsPage() {
               ))}
             </div>
           ) : (
-            <p className="text-muted-foreground">No projects yet</p>
+            <p className="text-center py-8 text-muted-foreground">
+              {debouncedSearch ? 'No projects match your search' : 'No projects yet'}
+            </p>
           )}
         </CardContent>
+        {pagination && pagination.totalPages > 1 && (
+          <CardFooter className="flex items-center justify-between border-t px-6 py-4">
+            {pagination.hasPrev ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                className="flex items-center gap-1"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Previous
+              </Button>
+            ) : (
+              <div />
+            )}
+            <span className="text-sm text-muted-foreground">
+              Page {pagination.page} of {pagination.totalPages} ({pagination.total} total)
+            </span>
+            {pagination.hasNext ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => p + 1)}
+                className="flex items-center gap-1"
+              >
+                Next
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            ) : (
+              <div />
+            )}
+          </CardFooter>
+        )}
       </Card>
 
       <CreateProjectDialog

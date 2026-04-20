@@ -24,7 +24,14 @@ export async function GET(
     const user = await requireAuth();
     const member = await requireOrgAccess(orgId, user.id);
 
-    const baseWhere =
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get('page') || '1', 10);
+    const limit = parseInt(searchParams.get('limit') || '20', 10);
+    const search = searchParams.get('search') || '';
+    const sort = searchParams.get('sort') === 'asc' ? 'asc' : 'desc';
+    const skip = (page - 1) * limit;
+
+    const baseWhere: any =
       member.role === 'MEMBER'
         ? {
             orgId,
@@ -50,21 +57,56 @@ export async function GET(
           }
         : { orgId, parentId: null };
 
-    const projects = await prisma.project.findMany({
-      where: baseWhere,
-      include: {
-        creator: {
-          select: {
-            id: true,
-            email: true,
-            name: true,
+    if (search) {
+      const searchConditions = [
+        { name: { contains: search, mode: 'insensitive' as const } },
+        { code: { contains: search, mode: 'insensitive' as const } },
+        { description: { contains: search, mode: 'insensitive' as const } },
+      ];
+      if (baseWhere.OR) {
+        // MEMBER role: combine existing OR with search using AND
+        baseWhere.AND = [
+          { OR: baseWhere.OR },
+          { OR: searchConditions },
+        ];
+        delete baseWhere.OR;
+      } else {
+        baseWhere.OR = searchConditions;
+      }
+    }
+
+    const [projects, total] = await Promise.all([
+      prisma.project.findMany({
+        where: baseWhere,
+        include: {
+          creator: {
+            select: {
+              id: true,
+              email: true,
+              name: true,
+            },
           },
         },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+        skip,
+        take: limit,
+        orderBy: { createdAt: sort },
+      }),
+      prisma.project.count({ where: baseWhere }),
+    ]);
 
-    return NextResponse.json({ projects });
+    const totalPages = Math.ceil(total / limit);
+
+    return NextResponse.json({
+      projects,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1,
+      },
+    });
   } catch (error) {
     if (error instanceof Error && error.message === 'Access denied') {
       return NextResponse.json(

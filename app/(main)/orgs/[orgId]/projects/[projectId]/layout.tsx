@@ -93,7 +93,7 @@ export default function ProjectLayout({
   const { data: userRole, isLoading: roleLoading } = useUserRole(orgId);
   const { data: org } = useOrganization(orgId);
   const { data: orgs } = useOrganizations();
-  const { data: projects } = useOrganizationProjects(orgId);
+  const { data: projectsData } = useOrganizationProjects(orgId);
 
   useEffect(() => {
     if (roleLoading || userRole === undefined) return;
@@ -285,7 +285,7 @@ export default function ProjectLayout({
                 </div>
                 <ScrollArea className="h-[200px]">
                   <div className="p-1">
-                    {projects?.map((p: any) => (
+                    {projectsData?.projects?.map((p: any) => (
                       <button
                         key={p.id}
                         className={cn(
@@ -310,7 +310,7 @@ export default function ProjectLayout({
                         )}
                       </button>
                     ))}
-                    {(!projects || projects.length === 0) && (
+                    {(!projectsData?.projects || projectsData.projects.length === 0) && (
                       <p className="text-xs text-muted-foreground px-2 py-4 text-center">
                         No projects found
                       </p>

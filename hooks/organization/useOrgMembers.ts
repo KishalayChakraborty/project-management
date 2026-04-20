@@ -2,11 +2,23 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/axios';
 import type { OrgMember, SearchUserResult, InviteMemberInput, InviteMemberResult } from './types';
 
-export function useOrganizationMembers(orgId: string | null, page: number = 1) {
+export function useOrganizationMembers(
+  orgId: string | null,
+  page: number = 1,
+  search: string = '',
+  sort: 'asc' | 'desc' = 'desc',
+  limit: number = 20
+) {
   return useQuery({
-    queryKey: ['organizations', orgId, 'members', page],
+    queryKey: ['organizations', orgId, 'members', page, search, sort, limit],
     queryFn: async () => {
       if (!orgId) return null;
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: String(limit),
+        sort,
+      });
+      if (search) params.set('search', search);
       const { data } = await api.get<{
         members: OrgMember[];
         pagination: {
@@ -17,7 +29,7 @@ export function useOrganizationMembers(orgId: string | null, page: number = 1) {
           hasNext: boolean;
           hasPrev: boolean;
         };
-      }>(`/orgs/${orgId}/members?page=${page}`);
+      }>(`/orgs/${orgId}/members?${params.toString()}`);
       return data;
     },
     enabled: !!orgId,

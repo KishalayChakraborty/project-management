@@ -12,7 +12,7 @@ export default function MyWorkPage() {
 
   const { data: org, isLoading: orgLoading } = useOrganization(orgId);
   const { data: userRole, isLoading: roleLoading } = useUserRole(orgId);
-  const { data: projects, isLoading: projectsLoading } = useOrganizationProjects(orgId);
+  const { data: projectsData, isLoading: projectsLoading } = useOrganizationProjects(orgId);
 
   useEffect(() => {
     if (roleLoading || !userRole) return;
@@ -60,9 +60,9 @@ export default function MyWorkPage() {
         <CardContent>
           {projectsLoading ? (
             <div>Loading projects...</div>
-          ) : projects && projects.length > 0 ? (
+          ) : projectsData?.projects && projectsData.projects.length > 0 ? (
             <div className="space-y-2">
-              {projects.map((project) => (
+              {projectsData.projects.map((project: any) => (
                 <div
                   key={project.id}
                   className="flex items-center justify-between p-4 border rounded cursor-pointer hover:bg-accent transition-colors"
