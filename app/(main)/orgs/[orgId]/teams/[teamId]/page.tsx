@@ -18,6 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Loading } from '@/components/ui/loading';
 import {
   Table,
   TableBody,
@@ -172,7 +173,7 @@ export default function TeamDetailPage() {
   };
 
   if (teamLoading) {
-    return <div>Loading...</div>;
+    return <Loading fullPage text="Loading team..." />;
   }
 
   if (!team) {
@@ -307,7 +308,7 @@ export default function TeamDetailPage() {
                 </div>
 
                 {membersLoading ? (
-                  <div>Loading members...</div>
+                  <Loading text="Loading members..." />
                 ) : membersData && membersData.members.length > 0 ? (
                   <>
                     <Table>

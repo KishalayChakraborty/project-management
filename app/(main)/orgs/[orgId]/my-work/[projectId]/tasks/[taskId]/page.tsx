@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Play, CheckSquare, Send, Trash2 } from 'lucide-react';
+import { ArrowLeft, Play, CheckSquare, Send, Trash2, Loader2 } from 'lucide-react';
 
 function formatDuration(minutes: number) {
   const h = Math.floor(minutes / 60);
@@ -92,8 +92,11 @@ export default function MemberTaskDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
-        <div>Loading task...</div>
+      <div className="flex h-[50vh] w-full items-center justify-center">
+        <div className="flex flex-col items-center gap-2">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Loading task...</p>
+        </div>
       </div>
     );
   }

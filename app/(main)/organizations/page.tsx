@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { CreateOrganizationDialog } from '@/components/organization/CreateOrganizationDialog';
 import { Badge } from '@/components/ui/badge';
+import { Loading } from '@/components/ui/loading';
 
 function getOrgRoute(orgId: string, userRole: string) {
   if (userRole === 'ADMIN' || userRole === 'MAINTAINER') {
@@ -34,7 +35,7 @@ export default function OrganizationsPage() {
       </div>
 
       {isLoading ? (
-        <div>Loading organizations...</div>
+        <Loading text="Loading organizations..." />
       ) : orgs && orgs.length > 0 ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {orgs.map((org) => (

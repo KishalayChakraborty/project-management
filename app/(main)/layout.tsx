@@ -19,6 +19,7 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar';
 import { LayoutDashboard, Building2, ListTodo } from 'lucide-react';
+import { Loading } from '@/components/ui/loading';
 
 const homeNavItems = [
   { title: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
@@ -42,7 +43,7 @@ export default function MainLayout({
     pathname === '/pending-tasks';
 
   if (status === 'loading') {
-    return <div>Loading...</div>;
+    return <Loading fullPage text="Refreshing session..." />;
   }
 
   if (status === 'unauthenticated') {

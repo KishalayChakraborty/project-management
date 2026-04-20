@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { CheckSquare, Clock, ListTodo } from 'lucide-react';
+import { Loading } from '@/components/ui/loading';
 
 function isOverdue(task: Task): boolean {
   if (!task.deadlineDt) return false;
@@ -56,11 +57,7 @@ export default function MemberDashboardPage() {
   const overdueCount = myTasks.filter(isOverdue).length;
 
   if (projectLoading) {
-    return (
-      <div className="space-y-4">
-        <div>Loading...</div>
-      </div>
-    );
+    return <Loading fullPage />;
   }
 
   if (!project) {
@@ -130,7 +127,7 @@ export default function MemberDashboardPage() {
         </CardHeader>
         <CardContent>
           {tasksLoading ? (
-            <div>Loading tasks...</div>
+            <Loading text="Loading tasks..." />
           ) : myTasks.length === 0 ? (
             <p className="text-muted-foreground">No tasks assigned to you in this project</p>
           ) : (

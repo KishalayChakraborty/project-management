@@ -26,6 +26,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { CreateTaskDialog } from '@/components/tasks/CreateTaskDialog';
 import { ArrowUpDown, ArrowUp, ArrowDown, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Loading } from '@/components/ui/loading';
 
 export default function ProjectTasksPage() {
   const params = useParams();
@@ -204,7 +205,7 @@ export default function ProjectTasksPage() {
             </div>
 
             {isLoading ? (
-              <div className="text-center py-8">Loading tasks...</div>
+              <Loading text="Loading tasks..." />
             ) : filteredTasks.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 No tasks found

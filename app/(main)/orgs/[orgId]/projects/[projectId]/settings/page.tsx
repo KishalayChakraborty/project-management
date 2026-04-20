@@ -41,6 +41,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Loading } from "@/components/ui/loading";
 
 const updateProjectSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -147,11 +148,7 @@ export default function ProjectSettingsPage() {
   };
 
   if (projectLoading || roleLoading) {
-    return (
-      <div className="container mx-auto py-8">
-        <div>Loading...</div>
-      </div>
-    );
+    return <Loading fullPage />;
   }
 
   if (!project) {

@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useOrganization, useOrganizationProjects, useUserRole } from '@/hooks/organization';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Loading } from '@/components/ui/loading';
 
 export default function MyWorkPage() {
   const params = useParams();
@@ -22,11 +23,7 @@ export default function MyWorkPage() {
   }, [userRole, roleLoading, orgId, router]);
 
   if (orgLoading || roleLoading) {
-    return (
-      <div className="container mx-auto py-8">
-        <div>Loading...</div>
-      </div>
-    );
+    return <Loading fullPage />;
   }
 
   if (!org) {
@@ -59,7 +56,7 @@ export default function MyWorkPage() {
         </CardHeader>
         <CardContent>
           {projectsLoading ? (
-            <div>Loading projects...</div>
+            <Loading text="Loading projects..." />
           ) : projectsData?.projects && projectsData.projects.length > 0 ? (
             <div className="space-y-2">
               {projectsData.projects.map((project: any) => (

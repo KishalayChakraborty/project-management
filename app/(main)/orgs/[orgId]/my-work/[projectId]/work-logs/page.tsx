@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/table';
 import { ArrowUpDown, ArrowUp, ArrowDown, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { Loading } from '@/components/ui/loading';
 
 export default function MemberWorkLogsPage() {
   const params = useParams();
@@ -207,7 +208,7 @@ export default function MemberWorkLogsPage() {
             </div>
 
             {isLoading ? (
-              <div className="text-center py-8">Loading work logs...</div>
+              <Loading text="Loading work logs..." />
             ) : !workLogsData || workLogsData.workLogs.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 No work logs found

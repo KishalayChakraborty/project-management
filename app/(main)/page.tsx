@@ -3,6 +3,7 @@
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import { Loading } from '@/components/ui/loading';
 
 export default function HomePage() {
   const { status } = useSession();
@@ -16,5 +17,5 @@ export default function HomePage() {
     }
   }, [status, router]);
 
-  return <div>Loading...</div>;
+  return <Loading fullPage />;
 }

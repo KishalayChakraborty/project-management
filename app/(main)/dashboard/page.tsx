@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { CreateOrganizationDialog } from '@/components/organization/CreateOrganizationDialog';
 import Link from 'next/link';
 import { Building2, ListTodo, Users, FolderKanban, Plus } from 'lucide-react';
+import { Loading } from '@/components/ui/loading';
 
 function getOrgRoute(orgId: string, userRole: string) {
   if (userRole === 'ADMIN' || userRole === 'MAINTAINER') {
@@ -21,14 +22,7 @@ export default function DashboardPage() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
   if (isLoading) {
-    return (
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-        </div>
-        <div className="text-muted-foreground">Loading dashboard...</div>
-      </div>
-    );
+    return <Loading fullPage text="Loading dashboard..." />;
   }
 
   return (

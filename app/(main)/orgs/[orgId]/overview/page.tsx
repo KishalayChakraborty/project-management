@@ -7,6 +7,7 @@ import {
   useUserRole,
 } from '@/hooks/organization';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Loading } from '@/components/ui/loading';
 
 export default function OverviewPage() {
   const params = useParams();
@@ -25,7 +26,7 @@ export default function OverviewPage() {
   }, [userRole, roleLoading, orgId, router]);
 
   if (orgLoading || roleLoading) {
-    return <div>Loading...</div>;
+    return <Loading fullPage />;
   }
 
   if (!org) {

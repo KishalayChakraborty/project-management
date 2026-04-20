@@ -48,6 +48,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import { Loading } from "@/components/ui/loading";
 
 function ProjectHeader({
   orgId,
@@ -145,11 +146,7 @@ export default function ProjectLayout({
   const { data: session } = useSession();
 
   if (!roleLoading && userRole === "MEMBER") {
-    return (
-      <div className="flex flex-1 items-center justify-center p-8">
-        <div className="text-muted-foreground">Redirecting...</div>
-      </div>
-    );
+    return <Loading fullPage text="Redirecting..." />;
   }
 
   return (

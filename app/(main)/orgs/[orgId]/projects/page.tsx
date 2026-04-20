@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { CreateProjectDialog } from '@/components/projects/CreateProjectDialog';
 import { Search, ArrowUpDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Loading } from '@/components/ui/loading';
 
 export default function ProjectsPage() {
   const params = useParams();
@@ -50,7 +51,7 @@ export default function ProjectsPage() {
   }, [userRole, roleLoading, orgId, router]);
 
   if (orgLoading || roleLoading) {
-    return <div>Loading...</div>;
+    return <Loading fullPage />;
   }
 
   if (!org) {
@@ -106,7 +107,7 @@ export default function ProjectsPage() {
         </CardHeader>
         <CardContent>
           {projectsLoading ? (
-            <div className="text-center py-8 text-muted-foreground">Loading projects...</div>
+            <Loading text="Loading projects..." />
           ) : projects.length > 0 ? (
             <div className="space-y-2">
               {projects.map((project: any) => (

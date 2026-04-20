@@ -34,6 +34,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Users, Plus, Trash2, Search } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+import { Loading } from '@/components/ui/loading';
 
 export default function ProjectTeamsPage() {
   const params = useParams();
@@ -56,7 +57,7 @@ export default function ProjectTeamsPage() {
   const isAdminOrMaintainer = userRole === 'ADMIN' || userRole === 'MAINTAINER';
 
   if (roleLoading) {
-    return <div>Loading...</div>;
+    return <Loading fullPage />;
   }
 
   if (!isAdminOrMaintainer) {
@@ -165,7 +166,7 @@ export default function ProjectTeamsPage() {
           </div>
 
           {teamsLoading ? (
-            <div className="text-center py-8 text-muted-foreground">Loading teams...</div>
+            <Loading text="Loading teams..." />
           ) : filteredProjectTeams.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               {searchQuery ? 'No teams match your search' : 'No teams assigned to this project'}

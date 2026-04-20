@@ -7,6 +7,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Loading } from '@/components/ui/loading';
 import {
   Select,
   SelectContent,
@@ -184,7 +185,7 @@ export default function PendingTasksPage() {
             </div>
 
             {isLoading ? (
-              <div className="text-center py-8">Loading tasks...</div>
+              <Loading text="Loading tasks..." />
             ) : filteredTasks.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 No pending tasks found

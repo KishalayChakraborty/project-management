@@ -11,6 +11,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Loading } from '@/components/ui/loading';
 import { CreateTeamDialog } from '@/components/teams/CreateTeamDialog';
 import { Search, ArrowUpDown, ChevronLeft, ChevronRight } from 'lucide-react';
 
@@ -50,7 +51,7 @@ export default function TeamsPage() {
   }, [userRole, roleLoading, orgId, router]);
 
   if (orgLoading || roleLoading) {
-    return <div>Loading...</div>;
+    return <Loading fullPage />;
   }
 
   if (!org) {
@@ -106,7 +107,7 @@ export default function TeamsPage() {
         </CardHeader>
         <CardContent>
           {teamsLoading ? (
-            <div className="text-center py-8 text-muted-foreground">Loading teams...</div>
+            <Loading text="Loading teams..." />
           ) : teams.length > 0 ? (
             <div className="space-y-2">
               {teams.map((team: any) => (

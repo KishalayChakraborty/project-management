@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { ArrowUpDown, ArrowUp, ArrowDown, CheckSquare, Play, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Loading } from '@/components/ui/loading';
 
 const now = new Date();
 const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
@@ -228,7 +229,7 @@ export default function MemberTasksPage() {
             </div>
 
             {isLoading ? (
-              <div className="text-center py-8">Loading tasks...</div>
+              <Loading text="Loading tasks..." />
             ) : filteredTasks.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 No tasks found

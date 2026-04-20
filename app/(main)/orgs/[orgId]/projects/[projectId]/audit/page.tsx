@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/table';
 import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { Loading } from '@/components/ui/loading';
 
 export default function ProjectAuditPage() {
   const params = useParams();
@@ -155,7 +156,7 @@ export default function ProjectAuditPage() {
             </div>
 
             {isLoading ? (
-              <div className="text-center py-8">Loading audit logs...</div>
+              <Loading text="Loading audit logs..." />
             ) : !auditLogsData || auditLogsData.auditLogs.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 No audit logs found

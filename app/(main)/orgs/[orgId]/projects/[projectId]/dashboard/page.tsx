@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { useRef, useState } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import { MarkDownViewer } from '@/components/projects/MarkDownViewer';
+import { Loading } from '@/components/ui/loading';
 
 export default function ProjectDashboardPage() {
   const params = useParams();
@@ -45,11 +46,7 @@ export default function ProjectDashboardPage() {
   };
 
   if (isLoading) {
-    return (
-      <div className="container mx-auto py-8">
-        <div>Loading...</div>
-      </div>
-    );
+    return <Loading fullPage />;
   }
 
   if (!project) {

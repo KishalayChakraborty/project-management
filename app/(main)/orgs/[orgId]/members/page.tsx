@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/table';
 import { InviteMemberDialog } from '@/components/organization/InviteMemberDialog';
 import { Search, ArrowUpDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Loading } from '@/components/ui/loading';
 
 export default function MembersPage() {
   const params = useParams();
@@ -58,7 +59,7 @@ export default function MembersPage() {
   }, [userRole, roleLoading, orgId, router]);
 
   if (orgLoading || roleLoading) {
-    return <div>Loading...</div>;
+    return <Loading fullPage />;
   }
 
   if (!org) {
@@ -113,7 +114,7 @@ export default function MembersPage() {
         </CardHeader>
         <CardContent>
           {membersLoading ? (
-            <div className="text-center py-8 text-muted-foreground">Loading members...</div>
+            <Loading text="Loading members..." />
           ) : membersData && membersData.members.length > 0 ? (
             <Table>
               <TableHeader>

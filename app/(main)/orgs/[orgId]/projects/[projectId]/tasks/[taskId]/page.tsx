@@ -38,7 +38,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { EditTaskDialog } from "@/components/tasks/EditTaskDialog";
-import { ArrowLeft, Pencil, Link2, X, Send, Trash2 } from "lucide-react";
+import { ArrowLeft, Pencil, Link2, X, Send, Trash2, Loader2 } from "lucide-react";
 
 function formatDuration(minutes: number) {
   const h = Math.floor(minutes / 60);
@@ -158,8 +158,11 @@ export default function TaskDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
-        <div>Loading task...</div>
+      <div className="flex h-[50vh] w-full items-center justify-center">
+        <div className="flex flex-col items-center gap-2">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Loading task...</p>
+        </div>
       </div>
     );
   }
