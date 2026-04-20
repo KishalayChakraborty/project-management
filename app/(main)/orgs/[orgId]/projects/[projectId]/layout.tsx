@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { useParams, usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useProject } from '@/hooks/projects';
-import { useUserRole } from '@/hooks/organization';
+import { useOrganization, useUserRole } from '@/hooks/organization';
 import {
   Sidebar,
   SidebarContent,
@@ -21,7 +21,7 @@ import {
   SidebarTrigger,
   useSidebar,
 } from '@/components/ui/sidebar';
-import { LayoutDashboard, CheckSquare, Clock, FileText, Settings, Users } from 'lucide-react';
+import { LayoutDashboard, CheckSquare, Clock, FileText, Settings, Users, ChevronRight } from 'lucide-react';
 import { useSession, signOut } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -62,6 +62,7 @@ export default function ProjectLayout({
 
   const { data: project, isLoading: projectLoading } = useProject(orgId, projectId);
   const { data: userRole, isLoading: roleLoading } = useUserRole(orgId);
+  const { data: org } = useOrganization(orgId);
 
   useEffect(() => {
     if (roleLoading || userRole === undefined) return;
@@ -166,10 +167,39 @@ export default function ProjectLayout({
       </Sidebar>
       <SidebarInset>
         <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
-          <div className="flex items-center gap-4 flex-1">
-            <Link href="/" className="text-sm hover:underline">
-              Organizations
-            </Link>
+          <div className="flex items-center gap-2 flex-1">
+            <span className="flex items-center gap-2">
+              <Link
+                href="/dashboard"
+                className="text-sm hover:underline text-muted-foreground"
+              >
+                Home
+              </Link>
+            </span>
+            <span className="flex items-center gap-2">
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              <Link
+                href={`/orgs/${orgId}/overview`}
+                className="text-sm hover:underline text-muted-foreground"
+              >
+                {org?.name || 'Organization'}
+              </Link>
+            </span>
+            <span className="flex items-center gap-2">
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              <Link
+                href={`/orgs/${orgId}/projects`}
+                className="text-sm hover:underline text-muted-foreground"
+              >
+                Projects
+              </Link>
+            </span>
+            <span className="flex items-center gap-2">
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium">
+                {project?.name || 'Project'}
+              </span>
+            </span>
           </div>
           <div className="flex items-center gap-4">
             <span className="text-sm text-muted-foreground">
