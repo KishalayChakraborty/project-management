@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { randomBytes } from 'crypto';
 import prisma from '@/lib/prisma';
 import { requireAuth, requireOrgRole } from '@/lib/auth';
+import { createAuditLog } from '@/lib/audit';
 
 const inviteMemberSchema = z.object({
   email: z.string().email(),
@@ -65,6 +66,15 @@ export async function POST(
         },
       });
 
+      await createAuditLog({
+        orgId,
+        actorUserId: user.id,
+        entityType: 'OrgMember',
+        entityId: targetUser.id,
+        action: 'MEMBER_ADDED',
+        diffJson: { email: targetUser.email, role: data.role },
+      });
+
       return NextResponse.json({ member, added: true }, { status: 201 });
     }
 
@@ -100,6 +110,15 @@ export async function POST(
         invitedBy: user.id,
         status: 'PENDING',
       },
+    });
+
+    await createAuditLog({
+      orgId,
+      actorUserId: user.id,
+      entityType: 'OrgInvite',
+      entityId: invite.id,
+      action: 'INVITE_SENT',
+      diffJson: { email: data.email, role: data.role },
     });
 
     return NextResponse.json({ invite, added: false }, { status: 201 });

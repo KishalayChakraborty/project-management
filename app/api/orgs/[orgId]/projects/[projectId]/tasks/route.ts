@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import prisma from '@/lib/prisma';
 import { requireAuth, requireOrgAccess, requireOrgRole, requireProjectAccess } from '@/lib/auth';
+import { createAuditLog } from '@/lib/audit';
 import type { Prisma } from '@/app/generated/prisma/client';
 
 const createTaskSchema = z.object({
@@ -218,6 +219,15 @@ export async function POST(
           },
         },
       },
+    });
+
+    await createAuditLog({
+      orgId,
+      actorUserId: user.id,
+      entityType: 'Task',
+      entityId: task.id,
+      action: 'CREATE',
+      diffJson: { title: task.title, status: task.status, priority: task.priority },
     });
 
     return NextResponse.json({ task }, { status: 201 });

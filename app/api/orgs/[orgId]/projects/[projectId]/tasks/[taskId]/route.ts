@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import prisma from '@/lib/prisma';
 import { requireAuth, requireOrgAccess, requireProjectAccess } from '@/lib/auth';
+import { createAuditLog } from '@/lib/audit';
 
 const updateTaskSchema = z.object({
   title: z.string().min(1).optional(),
@@ -228,6 +229,15 @@ export async function PATCH(
         },
       });
     }
+
+    await createAuditLog({
+      orgId,
+      actorUserId: user.id,
+      entityType: 'Task',
+      entityId: taskId,
+      action: 'UPDATE',
+      diffJson: updateData as Record<string, unknown>,
+    });
 
     return NextResponse.json({ task: updated });
   } catch (error) {

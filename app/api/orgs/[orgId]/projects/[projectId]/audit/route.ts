@@ -15,7 +15,7 @@ export async function GET(
     const page = parseInt(searchParams.get('page') || '1', 10);
     const limit = 10;
     const skip = (page - 1) * limit;
-    const search = searchParams.get('search') || '';
+    const search = (searchParams.get('search') || '').slice(0, 100);
     const sortBy = searchParams.get('sortBy') || 'timestamp';
     const sortOrder = searchParams.get('sortOrder') || 'desc';
     const action = searchParams.get('action');
@@ -24,7 +24,7 @@ export async function GET(
     const endDate = searchParams.get('endDate');
 
     const whereClause: any = {
-      orgId: orgId || null,
+      orgId,
       entityType: 'Project',
       entityId: projectId,
     };

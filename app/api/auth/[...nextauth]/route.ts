@@ -1,7 +1,9 @@
 import NextAuth, { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
+import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { checkRateLimit } from '@/lib/rate-limit';
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -72,5 +74,24 @@ export const authOptions: NextAuthOptions = {
 
 const handler = NextAuth(authOptions);
 
-export { handler as GET, handler as POST };
+export { handler as GET };
+
+export async function POST(
+  req: NextRequest,
+  context: { params: Promise<{ nextauth: string[] }> }
+) {
+  // Only rate-limit the sign-in endpoint, not callback/signout/etc.
+  const segments = (await context.params).nextauth;
+  if (segments.join('/') === 'callback/credentials') {
+    const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
+    const rateLimit = checkRateLimit(`login:${ip}`, 10, 15 * 60 * 1000);
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: 'Too many login attempts. Please try again later.' },
+        { status: 429, headers: { 'Retry-After': String(rateLimit.retryAfter) } }
+      );
+    }
+  }
+  return handler(req, context);
+}
 

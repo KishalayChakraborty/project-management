@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import prisma from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth';
+import { createAuditLog } from '@/lib/audit';
 
 const createOrgSchema = z.object({
   name: z.string().min(1),
@@ -91,6 +92,15 @@ export async function POST(request: Request) {
       });
 
       return newOrg;
+    });
+
+    await createAuditLog({
+      orgId: org.id,
+      actorUserId: user.id,
+      entityType: 'Organization',
+      entityId: org.id,
+      action: 'CREATE',
+      diffJson: { name: org.name },
     });
 
     return NextResponse.json({ org }, { status: 201 });

@@ -25,7 +25,7 @@ export async function GET(
     const page = parseInt(searchParams.get('page') || '1', 10);
     const limit = Math.min(Math.max(1, parseInt(searchParams.get('limit') || '25', 10)), 100);
     const skip = (page - 1) * limit;
-    const search = searchParams.get('search') || '';
+    const search = (searchParams.get('search') || '').slice(0, 100);
     const sortBy = searchParams.get('sortBy') || 'createdAt';
     const sortOrder = searchParams.get('sortOrder') || 'desc';
     const userIdParam = searchParams.get('userId');

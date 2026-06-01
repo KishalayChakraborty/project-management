@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import prisma from '@/lib/prisma';
 import { requireAuth, requireOrgAccess, requireOrgRole } from '@/lib/auth';
+import { createAuditLog } from '@/lib/audit';
 
 const createProjectSchema = z.object({
   name: z.string().min(1),
@@ -25,9 +26,9 @@ export async function GET(
     const member = await requireOrgAccess(orgId, user.id);
 
     const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page') || '1', 10);
-    const limit = parseInt(searchParams.get('limit') || '20', 10);
-    const search = searchParams.get('search') || '';
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
+    const limit = Math.min(Math.max(1, parseInt(searchParams.get('limit') || '20', 10)), 100);
+    const search = (searchParams.get('search') || '').slice(0, 100);
     const sort = searchParams.get('sort') === 'asc' ? 'asc' : 'desc';
     const skip = (page - 1) * limit;
 
@@ -186,6 +187,15 @@ export async function POST(
           },
         },
       },
+    });
+
+    await createAuditLog({
+      orgId,
+      actorUserId: user.id,
+      entityType: 'Project',
+      entityId: project.id,
+      action: 'CREATE',
+      diffJson: { name: project.name, code: project.code, status: project.status },
     });
 
     return NextResponse.json({ project }, { status: 201 });
