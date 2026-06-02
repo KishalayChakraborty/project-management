@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   useTask,
@@ -104,9 +104,18 @@ const Linkify = ({ text }: { text: string }) => {
 export default function TaskDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const orgId = params.orgId as string;
   const projectId = params.projectId as string;
   const taskId = params.taskId as string;
+
+  const fromParam = searchParams.get('from');
+  const backHref = fromParam || `/orgs/${orgId}/projects/${projectId}/tasks`;
+  const backLabel = fromParam === '/pending-tasks'
+    ? 'Back to Pending Tasks'
+    : fromParam === '/my-tasks'
+      ? 'Back to My Tasks'
+      : 'Back to tasks';
 
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [blockedByTaskId, setBlockedByTaskId] = useState<string>("");
@@ -172,9 +181,9 @@ export default function TaskDetailPage() {
       <div className="space-y-4">
         <div>Task not found</div>
         <Button asChild variant="outline">
-          <Link href={`/orgs/${orgId}/projects/${projectId}/tasks`}>
+          <Link href={backHref}>
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to tasks
+            {backLabel}
           </Link>
         </Button>
       </div>
@@ -194,9 +203,9 @@ export default function TaskDetailPage() {
       <div className="space-y-4 flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2">
           <Button asChild variant="ghost" size="sm">
-            <Link href={`/orgs/${orgId}/projects/${projectId}/tasks`}>
+            <Link href={backHref}>
               <ArrowLeft className="h-4 w-4 mr-1" />
-              Back to tasks
+              {backLabel}
             </Link>
           </Button>
           <Button

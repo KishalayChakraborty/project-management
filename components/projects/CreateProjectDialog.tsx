@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -83,7 +82,6 @@ export function CreateProjectDialog({
   open,
   onOpenChange,
 }: CreateProjectDialogProps) {
-  const router = useRouter();
   const createProject = useCreateProject(orgId);
   const [openCurrency, setOpenCurrency] = useState(false);
 
@@ -123,7 +121,6 @@ export function CreateProjectDialog({
 
       reset();
       onOpenChange(false);
-      router.push(`/orgs/${orgId}/projects/${project.id}/dashboard`);
     } catch (error) {
       console.error("Failed to create project:", error);
     }

@@ -188,7 +188,7 @@ export async function POST(
         type: data.type || 'TASK',
         status: data.status || 'BACKLOG',
         priority: data.priority || 'P4',
-        assigneeUserId: data.assigneeUserId,
+        assigneeUserId: data.assigneeUserId ?? user.id,
         reviewerUserId: data.reviewerUserId,
         assignmentDt: data.assignmentDt ? new Date(data.assignmentDt) : null,
         startDt: data.startDt ? new Date(data.startDt) : null,

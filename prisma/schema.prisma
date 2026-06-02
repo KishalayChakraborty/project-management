@@ -99,14 +99,17 @@ enum OrgInviteStatus {
 }
 
 model User {
-  id        String     @id @default(uuid())
-  email     String     @unique
-  name      String?
-  password  String
-  status    UserStatus @default(ACTIVE)
-  avatar    String?
-  createdAt DateTime   @default(now()) @map("created_at")
-  lastLogin DateTime?  @map("last_login")
+  id           String     @id @default(uuid())
+  email        String     @unique
+  name         String?
+  password     String
+  status       UserStatus @default(ACTIVE)
+  avatar       String?
+  isVirtual       Boolean    @default(false) @map("is_virtual")
+  mergedIntoId    String?    @map("merged_into_id")
+  createdByUserId String?    @map("created_by_user_id")
+  createdAt       DateTime   @default(now()) @map("created_at")
+  lastLogin       DateTime?  @map("last_login")
 
   orgMemberships        OrgMember[]
   teamMemberships       TeamMember[]
@@ -128,6 +131,13 @@ model User {
   receivedInvites       OrgInvite[]    @relation("OrgInvitee")
   taskComments          TaskComment[]
   passwordResetTokens   PasswordResetToken[]
+  projectDocs           ProjectDoc[]
+  virtualProfile        VirtualMemberProfile?
+  createdVirtualUsers   User[]               @relation("VirtualUserCreator")
+  createdByUser         User?                @relation("VirtualUserCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@index([isVirtual])
+  @@index([createdByUserId])
 
   @@map("users")
 }
@@ -154,6 +164,7 @@ model Organization {
   inventoryLogs InventoryLog[]
   transactions Transaction[]
   auditLogs    AuditLog[]
+  projectDocs  ProjectDoc[]
 
   @@map("organizations")
 }
@@ -251,6 +262,7 @@ model Project {
   tasks         Task[]
   workLogs      WorkLog[]
   inventoryLinks InventoryLink[]
+  docs           ProjectDoc[]
 
   @@unique([orgId, code])
   @@index([orgId])
@@ -543,6 +555,62 @@ model AuditLog {
   @@index([entityType, entityId])
   @@index([actorUserId])
   @@map("audit_logs")
+}
+
+enum DocType {
+  LINK
+  CREDENTIAL
+  NOTE
+}
+
+enum DocVisibility {
+  MEMBERS
+  ADMIN_ONLY
+}
+
+model ProjectDoc {
+  id          String        @id @default(uuid())
+  projectId   String        @map("project_id")
+  orgId       String        @map("org_id")
+  title       String
+  type        DocType       @default(NOTE)
+  visibility  DocVisibility @default(MEMBERS)
+  content     String?
+  url         String?
+  metadata    Json?
+  sortOrder   Int           @default(0) @map("sort_order")
+  createdBy   String        @map("created_by")
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  project     Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  org         Organization  @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  creator     User          @relation(fields: [createdBy], references: [id])
+
+  @@index([projectId])
+  @@index([orgId])
+  @@map("project_docs")
+}
+
+model VirtualMemberProfile {
+  userId       String    @id @map("user_id")
+  phone        String?
+  whatsapp     String?
+  address      String?
+  githubUrl    String?   @map("github_url")
+  linkedinUrl  String?   @map("linkedin_url")
+  dob          DateTime? @map("dob") @db.Date
+  parentOrg    String?   @map("parent_org")
+  designation  String?
+  education    String?
+  introducedBy String?   @map("introduced_by")
+  bankAccount  String?   @map("bank_account")
+  upiId        String?   @map("upi_id")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("virtual_member_profiles")
 }
 
 model PasswordResetToken {

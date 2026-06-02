@@ -18,12 +18,13 @@ import {
   SidebarRail,
   SidebarTrigger,
 } from '@/components/ui/sidebar';
-import { LayoutDashboard, Building2, ListTodo } from 'lucide-react';
+import { LayoutDashboard, Building2, ListTodo, ClipboardList } from 'lucide-react';
 import { Loading } from '@/components/ui/loading';
 
 const homeNavItems = [
   { title: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
   { title: 'Organizations', icon: Building2, href: '/organizations' },
+  { title: 'My Tasks', icon: ClipboardList, href: '/my-tasks' },
   { title: 'Pending Tasks', icon: ListTodo, href: '/pending-tasks' },
 ];
 
@@ -40,7 +41,8 @@ export default function MainLayout({
   const isHomeSidebarRoute =
     pathname === '/dashboard' ||
     pathname === '/organizations' ||
-    pathname === '/pending-tasks';
+    pathname === '/pending-tasks' ||
+    pathname === '/my-tasks';
 
   if (status === 'loading') {
     return <Loading fullPage text="Refreshing session..." />;

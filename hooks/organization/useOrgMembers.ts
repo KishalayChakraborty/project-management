@@ -66,6 +66,52 @@ export function useInviteMember(orgId: string) {
   });
 }
 
+export function useCreateVirtualMember(orgId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { name: string; email?: string; role: 'MAINTAINER' | 'MEMBER' }) => {
+      const { data } = await api.post<{ member: OrgMember }>(
+        `/orgs/${orgId}/members/virtual`,
+        input
+      );
+      return data.member;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['organizations', orgId, 'members'] });
+    },
+  });
+}
+
+export function useMergeVirtualMember(orgId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ virtualUserId, realUserId }: { virtualUserId: string; realUserId: string }) => {
+      const { data } = await api.post<{ message: string }>(
+        `/orgs/${orgId}/members/${virtualUserId}/merge`,
+        { realUserId }
+      );
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['organizations', orgId, 'members'] });
+      queryClient.invalidateQueries({ queryKey: ['my-tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['pending-tasks'] });
+    },
+  });
+}
+
+export function useRemoveMember(orgId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      await api.delete(`/orgs/${orgId}/members/${userId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['organizations', orgId, 'members'] });
+    },
+  });
+}
+
 export function useUserRole(orgId: string | null) {
   return useQuery({
     queryKey: ['organizations', orgId, 'role'],

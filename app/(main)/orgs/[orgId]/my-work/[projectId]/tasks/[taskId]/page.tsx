@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { useTask, useUpdateTask, type TaskDetail } from '@/hooks/tasks/useTasks';
@@ -75,9 +75,18 @@ const Linkify = ({ text }: { text: string }) => {
 
 export default function MemberTaskDetailPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const orgId = params.orgId as string;
   const projectId = params.projectId as string;
   const taskId = params.taskId as string;
+
+  const fromParam = searchParams.get('from');
+  const backHref = fromParam || `/orgs/${orgId}/my-work/${projectId}/tasks`;
+  const backLabel = fromParam === '/pending-tasks'
+    ? 'Back to Pending Tasks'
+    : fromParam === '/my-tasks'
+      ? 'Back to My Tasks'
+      : 'Back to my tasks';
   const { data: session } = useSession();
 
   const [commentText, setCommentText] = useState('');
@@ -106,9 +115,9 @@ export default function MemberTaskDetailPage() {
       <div className="space-y-4">
         <div>Task not found</div>
         <Button asChild variant="outline">
-          <Link href={`/orgs/${orgId}/my-work/${projectId}/tasks`}>
+          <Link href={backHref}>
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to my tasks
+            {backLabel}
           </Link>
         </Button>
       </div>
@@ -123,9 +132,9 @@ export default function MemberTaskDetailPage() {
       <div className="space-y-4 flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2">
           <Button asChild variant="ghost" size="sm">
-            <Link href={`/orgs/${orgId}/my-work/${projectId}/tasks`}>
+            <Link href={backHref}>
               <ArrowLeft className="h-4 w-4 mr-1" />
-              Back to my tasks
+              {backLabel}
             </Link>
           </Button>
 

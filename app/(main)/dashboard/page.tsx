@@ -77,42 +77,35 @@ export default function DashboardPage() {
         {stats?.organizations && stats.organizations.length > 0 ? (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {stats.organizations.map((org) => (
-              <Card key={org.orgId} className="hover:shadow-lg transition-shadow">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-base">{org.orgName}</CardTitle>
-                    <Badge variant="outline" className="text-xs">
-                      {org.userRole}
-                    </Badge>
-                  </div>
-                  <CardDescription>
-                    {org.orgStatus}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Users className="h-4 w-4" />
-                      <span>{org.memberCount} Members</span>
+              <Link key={org.orgId} href={getOrgRoute(org.orgId, org.userRole)}>
+                <Card className="hover:shadow-lg hover:border-primary/40 transition-all cursor-pointer h-full">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-base">{org.orgName}</CardTitle>
+                      <Badge variant="outline" className="text-xs">
+                        {org.userRole}
+                      </Badge>
                     </div>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <FolderKanban className="h-4 w-4" />
-                      <span>{org.projectCount} Projects</span>
+                    <CardDescription>{org.orgStatus}</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Users className="h-4 w-4" />
+                        <span>{org.memberCount} Members</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <FolderKanban className="h-4 w-4" />
+                        <span>{org.projectCount} Projects</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm">
+                        <ListTodo className="h-4 w-4" />
+                        <span className="font-medium">{org.pendingTaskCount} Pending Tasks</span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 text-sm">
-                      <ListTodo className="h-4 w-4" />
-                      <span className="font-medium">
-                        {org.pendingTaskCount} Pending Tasks
-                      </span>
-                    </div>
-                    <Button asChild className="w-full mt-2" size="sm">
-                      <Link href={getOrgRoute(org.orgId, org.userRole)}>
-                        View Organization
-                      </Link>
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              </Link>
             ))}
           </div>
         ) : (

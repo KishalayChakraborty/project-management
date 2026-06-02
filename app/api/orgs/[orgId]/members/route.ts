@@ -38,6 +38,8 @@ export async function GET(
               email: true,
               name: true,
               avatar: true,
+              isVirtual: true,
+              mergedIntoId: true,
             },
           },
         },

@@ -24,6 +24,8 @@ export interface OrgMember {
     email: string;
     name?: string | null;
     avatar?: string | null;
+    isVirtual?: boolean;
+    mergedIntoId?: string | null;
   };
 }
 

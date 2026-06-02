@@ -177,6 +177,7 @@ export async function POST(
         budgetTotal: data.budgetTotal,
         currency: data.currency || 'USD',
         createdBy: user.id,
+        userLinks: { create: { userId: user.id } },
       },
       include: {
         creator: {
