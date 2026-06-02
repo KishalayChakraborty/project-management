@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useOrganizations } from '@/hooks/organization';
 import { useOrganizationProjects } from '@/hooks/organization';
 import { CreateTaskDialog } from './CreateTaskDialog';
@@ -37,6 +37,15 @@ export function AddTaskFlow({ open, onOpenChange, defaultOrgId, defaultProjectId
   const [selectedProjectId, setSelectedProjectId] = useState<string>(defaultProjectId ?? '');
   const [showCreate, setShowCreate] = useState(false);
 
+  // Sync whenever the dialog opens or its defaults change
+  useEffect(() => {
+    if (open) {
+      setSelectedOrgId(defaultOrgId ?? '');
+      setSelectedProjectId(defaultProjectId ?? '');
+      setShowCreate(false);
+    }
+  }, [open, defaultOrgId, defaultProjectId]);
+
   const { data: orgs = [], isLoading: orgsLoading } = useOrganizations();
   const { data: projectsData, isLoading: projectsLoading } = useOrganizationProjects(
     selectedOrgId || null
@@ -59,7 +68,7 @@ export function AddTaskFlow({ open, onOpenChange, defaultOrgId, defaultProjectId
     onOpenChange(false);
   }
 
-  if (showCreate && selectedOrgId && selectedProjectId) {
+  if ((showCreate || (defaultOrgId && defaultProjectId)) && selectedOrgId && selectedProjectId) {
     return (
       <CreateTaskDialog
         open

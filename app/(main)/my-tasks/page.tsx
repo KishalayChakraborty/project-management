@@ -224,7 +224,7 @@ function TaskRow({
 // ─── project group ────────────────────────────────────────────────────────────
 
 function ProjectGroup({
-  entry, orgId, role, router, onEdit, onUpdated, searchQ, statusFilter,
+  entry, orgId, role, router, onEdit, onUpdated, searchQ, statusFilter, onAddTask,
 }: {
   entry: MyTasksOrg['projects'][0];
   orgId: string; role: string;
@@ -232,6 +232,7 @@ function ProjectGroup({
   onEdit: (task: MyTask, orgId: string) => void;
   onUpdated: () => void;
   searchQ: string; statusFilter: string;
+  onAddTask: (orgId: string, projectId: string) => void;
 }) {
   const [open, setOpen] = useState(true);
 
@@ -242,8 +243,6 @@ function ProjectGroup({
       return true;
     })
     .sort((a, b) => (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9));
-
-  if (filtered.length === 0) return null;
 
   const active = filtered.filter((t) => !['DONE', 'ARCHIVED'].includes(t.status)).length;
 
@@ -258,20 +257,35 @@ function ProjectGroup({
         <span className="flex-1 text-left">{entry.project.name}</span>
         <span className="text-xs text-muted-foreground mr-1">{entry.project.code}</span>
         {active > 0 && <Badge variant="secondary" className="text-xs">{active} active</Badge>}
+        <span
+          role="button"
+          onClick={(e) => { e.stopPropagation(); onAddTask(orgId, entry.project.id); }}
+          className="flex items-center gap-0.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted rounded px-1.5 py-0.5 ml-1 transition-colors"
+        >
+          <Plus className="h-3 w-3" />
+          Add
+        </span>
       </button>
       {open && (
         <div className="divide-y">
-          {filtered.map((task) => (
-            <TaskRow
-              key={task.id}
-              task={task}
-              orgId={orgId}
-              role={role}
-              onEdit={() => onEdit(task, orgId)}
-              onOpen={() => router.push(getTaskRoute(task, orgId, role))}
-              onUpdated={onUpdated}
-            />
-          ))}
+          {filtered.length === 0 ? (
+            <div className="px-3 py-3 text-xs text-muted-foreground text-center">
+              No matching tasks.{' '}
+              <button className="underline" onClick={() => onAddTask(orgId, entry.project.id)}>Add one?</button>
+            </div>
+          ) : (
+            filtered.map((task) => (
+              <TaskRow
+                key={task.id}
+                task={task}
+                orgId={orgId}
+                role={role}
+                onEdit={() => onEdit(task, orgId)}
+                onOpen={() => router.push(getTaskRoute(task, orgId, role))}
+                onUpdated={onUpdated}
+              />
+            ))
+          )}
         </div>
       )}
     </div>
@@ -288,7 +302,7 @@ function OrgGroup({
   searchQ: string; statusFilter: string;
   onEdit: (task: MyTask, orgId: string) => void;
   onUpdated: () => void;
-  onAddTask: (orgId: string) => void;
+  onAddTask: (orgId: string, projectId?: string) => void;
 }) {
   const [open, setOpen] = useState(true);
 
@@ -326,7 +340,7 @@ function OrgGroup({
               Add Task
             </Button>
           </TooltipTrigger>
-          <TooltipContent>Add a task in {entry.org.name}</TooltipContent>
+          <TooltipContent>Add a task — choose project in {entry.org.name}</TooltipContent>
         </Tooltip>
       </div>
       {open && (
@@ -342,6 +356,7 @@ function OrgGroup({
               onUpdated={onUpdated}
               searchQ={searchQ}
               statusFilter={statusFilter}
+              onAddTask={onAddTask}
             />
           ))}
         </div>
@@ -363,6 +378,7 @@ export default function MyTasksPage() {
 
   // Dialogs
   const [addTaskOrgId, setAddTaskOrgId] = useState<string | undefined>(undefined);
+  const [addTaskProjectId, setAddTaskProjectId] = useState<string | undefined>(undefined);
   const [addTaskOpen, setAddTaskOpen] = useState(false);
   const [editTask, setEditTask] = useState<{ task: MyTask; orgId: string } | null>(null);
 
@@ -374,8 +390,9 @@ export default function MyTasksPage() {
     queryClient.invalidateQueries({ queryKey: ['pending-tasks'] });
   }, [queryClient]);
 
-  function handleAddTask(orgId?: string) {
+  function handleAddTask(orgId?: string, projectId?: string) {
     setAddTaskOrgId(orgId);
+    setAddTaskProjectId(projectId);
     setAddTaskOpen(true);
   }
 
@@ -465,9 +482,10 @@ export default function MyTasksPage() {
           open={addTaskOpen}
           onOpenChange={(o) => {
             setAddTaskOpen(o);
-            if (!o) { setAddTaskOrgId(undefined); refreshAll(); }
+            if (!o) { setAddTaskOrgId(undefined); setAddTaskProjectId(undefined); refreshAll(); }
           }}
           defaultOrgId={addTaskOrgId}
+          defaultProjectId={addTaskProjectId}
         />
 
         {/* Edit Task Dialog */}

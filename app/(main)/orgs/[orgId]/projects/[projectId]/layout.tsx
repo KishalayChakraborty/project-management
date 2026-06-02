@@ -42,6 +42,7 @@ import {
   ChevronLeft,
   ChevronDown,
   Check,
+  RefreshCw,
 } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 import { Button } from "@/components/ui/button";
@@ -126,6 +127,11 @@ export default function ProjectLayout({
       title: "Docs",
       icon: FileText,
       href: `${basePath}/docs`,
+    },
+    {
+      title: "Recurring",
+      icon: RefreshCw,
+      href: `${basePath}/recurring-tasks`,
     },
     ...(isAdminOrMaintainer
       ? [

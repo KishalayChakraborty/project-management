@@ -133,8 +133,11 @@ model User {
   passwordResetTokens   PasswordResetToken[]
   projectDocs           ProjectDoc[]
   virtualProfile        VirtualMemberProfile?
-  createdVirtualUsers   User[]               @relation("VirtualUserCreator")
-  createdByUser         User?                @relation("VirtualUserCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdVirtualUsers       User[]                    @relation("VirtualUserCreator")
+  createdByUser             User?                     @relation("VirtualUserCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  recurringTasksCreated     RecurringTaskTemplate[]   @relation("RecurringCreator")
+  recurringTasksAssigned    RecurringTaskTemplate[]   @relation("RecurringAssignee")
+  recurringTasksReviewed    RecurringTaskTemplate[]   @relation("RecurringReviewer")
 
   @@index([isVirtual])
   @@index([createdByUserId])
@@ -163,8 +166,9 @@ model Organization {
   inventoryItems InventoryItem[]
   inventoryLogs InventoryLog[]
   transactions Transaction[]
-  auditLogs    AuditLog[]
-  projectDocs  ProjectDoc[]
+  auditLogs          AuditLog[]
+  projectDocs        ProjectDoc[]
+  recurringTemplates RecurringTaskTemplate[]
 
   @@map("organizations")
 }
@@ -262,7 +266,8 @@ model Project {
   tasks         Task[]
   workLogs      WorkLog[]
   inventoryLinks InventoryLink[]
-  docs           ProjectDoc[]
+  docs              ProjectDoc[]
+  recurringTemplates RecurringTaskTemplate[]
 
   @@unique([orgId, code])
   @@index([orgId])
@@ -325,6 +330,7 @@ model Task {
   workLogs        WorkLog[]
   inventoryLinks  InventoryLink[]
   comments        TaskComment[]
+  occurrence      RecurringTaskOccurrence?
 
   @@index([projectId])
   @@index([parentId])
@@ -557,6 +563,17 @@ model AuditLog {
   @@map("audit_logs")
 }
 
+enum RecurrenceFrequency {
+  DAILY
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+  BIMONTHLY
+  QUARTERLY
+  SEMI_ANNUALLY
+  ANNUALLY
+}
+
 enum DocType {
   LINK
   CREDENTIAL
@@ -590,6 +607,52 @@ model ProjectDoc {
   @@index([projectId])
   @@index([orgId])
   @@map("project_docs")
+}
+
+model RecurringTaskTemplate {
+  id              String               @id @default(uuid())
+  projectId       String               @map("project_id")
+  orgId           String               @map("org_id")
+  title           String
+  description     String?
+  type            TaskType             @default(TASK)
+  priority        TaskPriority         @default(P4)
+  assigneeUserId  String?              @map("assignee_user_id")
+  reviewerUserId  String?              @map("reviewer_user_id")
+  frequency       RecurrenceFrequency
+  startDate       DateTime             @map("start_date")
+  endDate         DateTime?            @map("end_date")
+  isActive        Boolean              @default(true) @map("is_active")
+  createdBy       String               @map("created_by")
+  createdAt       DateTime             @default(now()) @map("created_at")
+  updatedAt       DateTime             @updatedAt @map("updated_at")
+  lastGeneratedAt DateTime?            @map("last_generated_at")
+
+  project         Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  org             Organization         @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  creator         User                 @relation("RecurringCreator", fields: [createdBy], references: [id])
+  assignee        User?                @relation("RecurringAssignee", fields: [assigneeUserId], references: [id])
+  reviewer        User?                @relation("RecurringReviewer", fields: [reviewerUserId], references: [id])
+  occurrences     RecurringTaskOccurrence[]
+
+  @@index([projectId])
+  @@index([orgId])
+  @@map("recurring_task_templates")
+}
+
+model RecurringTaskOccurrence {
+  id          String                @id @default(uuid())
+  templateId  String                @map("template_id")
+  taskId      String                @unique @map("task_id")
+  periodStart DateTime              @map("period_start")
+  periodEnd   DateTime              @map("period_end")
+  createdAt   DateTime              @default(now()) @map("created_at")
+
+  template    RecurringTaskTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  task        Task                  @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([templateId])
+  @@map("recurring_task_occurrences")
 }
 
 model VirtualMemberProfile {
