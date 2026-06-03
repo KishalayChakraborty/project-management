@@ -11,6 +11,9 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import dynamic from 'next/dynamic';
+import { MarkDownViewer } from '@/components/projects/MarkDownViewer';
+const MDEditor = dynamic(() => import('@uiw/react-md-editor'), { ssr: false });
 import {
   Dialog,
   DialogContent,
@@ -195,8 +198,16 @@ function DocFormDialog({
 
           {form.type === 'NOTE' && (
             <div className="space-y-1.5">
-              <Label>Content</Label>
-              <Textarea placeholder="Write your notes here…" value={form.content} onChange={(e) => set('content', e.target.value)} rows={5} />
+              <Label>Content <span className="text-xs text-muted-foreground font-normal">(Markdown supported)</span></Label>
+              <div data-color-mode="light">
+                <MDEditor
+                  value={form.content}
+                  onChange={(v) => set('content', v ?? '')}
+                  height={260}
+                  preview="live"
+                  visibleDragbar={false}
+                />
+              </div>
             </div>
           )}
         </div>
@@ -310,7 +321,9 @@ function DocCard({
 
         {/* NOTE */}
         {doc.type === 'NOTE' && doc.content && (
-          <p className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap line-clamp-3">{doc.content}</p>
+          <div className="mt-1 text-xs prose prose-sm max-w-none line-clamp-4 [&_*]:text-muted-foreground">
+            <MarkDownViewer content={doc.content} />
+          </div>
         )}
       </div>
 

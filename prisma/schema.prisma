@@ -667,9 +667,10 @@ model VirtualMemberProfile {
   designation  String?
   education    String?
   introducedBy String?   @map("introduced_by")
-  bankAccount  String?   @map("bank_account")
-  upiId        String?   @map("upi_id")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
+  bankAccount     String?   @map("bank_account")
+  upiId           String?   @map("upi_id")
+  fieldVisibility Json?     @map("field_visibility")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
 
   user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 

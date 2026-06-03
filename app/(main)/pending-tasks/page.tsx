@@ -343,12 +343,25 @@ export default function PendingTasksPage() {
                             <TableCell onClick={(e) => e.stopPropagation()}>
                               <StatusSelect task={task} onUpdated={refreshAll} />
                             </TableCell>
-                            <TableCell className="text-sm text-muted-foreground">
-                              {task.assignee ? (task.assignee.name || task.assignee.email) : '—'}
+                            <TableCell className="text-sm">
+                              {task.assignee ? (
+                                <button
+                                  className="text-left hover:underline text-muted-foreground hover:text-foreground"
+                                  onClick={(e) => { e.stopPropagation(); router.push(`/orgs/${task.project.orgId}/members/${task.assignee!.id}`); }}
+                                >
+                                  {task.assignee.name || task.assignee.email}
+                                </button>
+                              ) : <span className="text-muted-foreground">—</span>}
                             </TableCell>
-                            <TableCell className="text-xs text-muted-foreground">
-                              <div className="truncate">{task.project.org.name}</div>
-                              <div className="truncate text-muted-foreground/70">{task.project.name}</div>
+                            <TableCell className="text-xs">
+                              <button
+                                className="block truncate text-muted-foreground hover:text-foreground hover:underline text-left w-full"
+                                onClick={(e) => { e.stopPropagation(); router.push(`/orgs/${task.project.orgId}/overview`); }}
+                              >{task.project.org.name}</button>
+                              <button
+                                className="block truncate text-muted-foreground/70 hover:text-foreground hover:underline text-left w-full"
+                                onClick={(e) => { e.stopPropagation(); router.push(`/orgs/${task.project.orgId}/projects/${task.project.id}/dashboard`); }}
+                              >{task.project.name}</button>
                             </TableCell>
                             <TableCell className="text-sm">
                               {task.deadlineDt

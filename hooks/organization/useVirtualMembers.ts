@@ -15,6 +15,7 @@ export interface VirtualMemberProfile {
   introducedBy?: string | null;
   bankAccount?: string | null;
   upiId?: string | null;
+  fieldVisibility?: Record<string, string> | null;
   updatedAt: string;
 }
 

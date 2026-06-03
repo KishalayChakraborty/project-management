@@ -254,7 +254,10 @@ function ProjectGroup({
       >
         {open ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
         <FolderKanban className="h-4 w-4 text-muted-foreground" />
-        <span className="flex-1 text-left">{entry.project.name}</span>
+        <span
+          className="flex-1 text-left hover:underline"
+          onClick={(e) => { e.stopPropagation(); router.push(`/orgs/${orgId}/projects/${entry.project.id}/dashboard`); }}
+        >{entry.project.name}</span>
         <span className="text-xs text-muted-foreground mr-1">{entry.project.code}</span>
         {active > 0 && <Badge variant="secondary" className="text-xs">{active} active</Badge>}
         <span
@@ -327,7 +330,10 @@ function OrgGroup({
         >
           {open ? <ChevronDown className="h-5 w-5 text-muted-foreground" /> : <ChevronRight className="h-5 w-5 text-muted-foreground" />}
           <Building2 className="h-5 w-5 text-muted-foreground" />
-          <span className="font-semibold text-base">{entry.org.name}</span>
+          <span
+            className="font-semibold text-base hover:underline cursor-pointer"
+            onClick={(e) => { e.stopPropagation(); router.push(`/orgs/${entry.org.id}/overview`); }}
+          >{entry.org.name}</span>
           <Badge variant="outline" className="text-xs ml-1">{entry.role}</Badge>
           <span className="text-xs text-muted-foreground">
             {total} task{total !== 1 ? 's' : ''}
