@@ -3,7 +3,7 @@ import prisma from '@/lib/prisma';
 import { requireAuth, requireOrgAccess } from '@/lib/auth';
 
 export async function GET(
-  request: Request,
+  _: Request,
   { params }: { params: Promise<{ orgId: string; projectId: string }> }
 ) {
   try {
@@ -23,46 +23,9 @@ export async function GET(
       );
     }
 
-    const teamLinks = await prisma.projectTeamLink.findMany({
-      where: { projectId },
-      select: { teamId: true },
-    });
-    const teamIds = teamLinks.map((l) => l.teamId);
-
-    const seen = new Set<string>();
-    let members: Array<{ user: { id: string; email: string; name: string | null; avatar: string | null } }> = [];
-
-    // Get team-based members
-    if (teamIds.length > 0) {
-      const teamMembers = await prisma.teamMember.findMany({
-        where: { teamId: { in: teamIds } },
-        include: {
-          user: {
-            select: {
-              id: true,
-              email: true,
-              name: true,
-              avatar: true,
-            },
-          },
-        },
-      });
-
-      members = teamMembers
-        .filter((m) => {
-          if (seen.has(m.userId)) return false;
-          seen.add(m.userId);
-          return true;
-        })
-        .map((m) => ({ user: m.user }));
-    }
-
-    // Also include org admins/maintainers so they can assign themselves
-    const adminMembers = await prisma.orgMember.findMany({
-      where: {
-        orgId,
-        role: { in: ['ADMIN', 'MAINTAINER'] },
-      },
+    // Fetch all organization members (any role, including virtual)
+    const orgMembers = await prisma.orgMember.findMany({
+      where: { orgId },
       include: {
         user: {
           select: {
@@ -70,17 +33,13 @@ export async function GET(
             email: true,
             name: true,
             avatar: true,
+            isVirtual: true,
           },
         },
       },
     });
 
-    for (const am of adminMembers) {
-      if (!seen.has(am.userId)) {
-        seen.add(am.userId);
-        members.push({ user: am.user });
-      }
-    }
+    const members = orgMembers.map((m) => ({ user: m.user }));
 
     return NextResponse.json({ members });
   } catch (error) {

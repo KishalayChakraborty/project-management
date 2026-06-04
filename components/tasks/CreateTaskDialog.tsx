@@ -320,7 +320,7 @@ export function CreateTaskDialog({
                             <SelectItem value="none">Unassigned</SelectItem>
                             {members.map((member) => (
                               <SelectItem key={member.user.id} value={member.user.id}>
-                                {member.user.name || member.user.email}
+                                {member.user.name || member.user.email} {member.user.isVirtual ? '(virtual)' : ''}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -349,7 +349,7 @@ export function CreateTaskDialog({
                             <SelectItem value="none">No reviewer</SelectItem>
                             {members.map((member) => (
                               <SelectItem key={member.user.id} value={member.user.id}>
-                                {member.user.name || member.user.email}
+                                {member.user.name || member.user.email} {member.user.isVirtual ? '(virtual)' : ''}
                               </SelectItem>
                             ))}
                           </SelectContent>

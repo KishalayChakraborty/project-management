@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useUpdateTask, type Task } from '@/hooks/tasks/useTasks';
+import { useUpdateTask, useUpdateTaskAssignee, useUpdateTaskReviewer, type Task } from '@/hooks/tasks/useTasks';
+import { useProjectTeamMembers } from '@/hooks/organization';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -32,6 +33,8 @@ const editTaskSchema = z.object({
   type: z.enum(['BUG', 'FEATURE', 'TASK', 'CHANGE', 'RESEARCH', 'OTHER']),
   status: z.enum(['BACKLOG', 'TODO', 'IN_PROGRESS', 'BLOCKED', 'REVIEW', 'DONE', 'ARCHIVED']),
   priority: z.enum(['P0', 'P1', 'P2', 'P3', 'P4']),
+  assigneeUserId: z.string().optional().nullable(),
+  reviewerUserId: z.string().optional().nullable(),
   assignmentDt: z.string().optional().nullable(),
   startDt: z.string().optional().nullable(),
   endDt: z.string().optional().nullable(),
@@ -63,7 +66,14 @@ export function EditTaskDialog({
   task,
 }: EditTaskDialogProps) {
   const updateTask = useUpdateTask(orgId, projectId, task.id);
+  const updateAssignee = useUpdateTaskAssignee(orgId, projectId, task.id);
+  const updateReviewer = useUpdateTaskReviewer(orgId, projectId, task.id);
+  const { data: teamMembersData } = useProjectTeamMembers(orgId, projectId);
   const { toast } = useToast();
+  const [initialAssignee, setInitialAssignee] = useState<string | null>(null);
+  const [initialReviewer, setInitialReviewer] = useState<string | null>(null);
+
+  const members = teamMembersData?.members ?? [];
 
   const form = useForm<EditTaskForm>({
     resolver: zodResolver(editTaskSchema),
@@ -73,6 +83,8 @@ export function EditTaskDialog({
       type: (task.type as EditTaskForm['type']) ?? 'TASK',
       status: (task.status as EditTaskForm['status']) ?? 'BACKLOG',
       priority: (task.priority as EditTaskForm['priority']) ?? 'P4',
+      assigneeUserId: task.assigneeUserId ?? null,
+      reviewerUserId: task.reviewerUserId ?? null,
       assignmentDt: task.assignmentDt ? new Date(task.assignmentDt).toISOString().slice(0, 16) : null,
       startDt: task.startDt ? new Date(task.startDt).toISOString().slice(0, 16) : null,
       endDt: task.endDt ? new Date(task.endDt).toISOString().slice(0, 16) : null,
@@ -84,12 +96,16 @@ export function EditTaskDialog({
 
   useEffect(() => {
     if (open && task) {
+      setInitialAssignee(task.assigneeUserId ?? null);
+      setInitialReviewer(task.reviewerUserId ?? null);
       reset({
         title: task.title,
         description: task.description ?? '',
         type: (task.type as EditTaskForm['type']) ?? 'TASK',
         status: (task.status as EditTaskForm['status']) ?? 'BACKLOG',
         priority: (task.priority as EditTaskForm['priority']) ?? 'P4',
+        assigneeUserId: task.assigneeUserId ?? null,
+        reviewerUserId: task.reviewerUserId ?? null,
         assignmentDt: task.assignmentDt ? new Date(task.assignmentDt).toISOString().slice(0, 16) : null,
         startDt: task.startDt ? new Date(task.startDt).toISOString().slice(0, 16) : null,
         endDt: task.endDt ? new Date(task.endDt).toISOString().slice(0, 16) : null,
@@ -111,6 +127,15 @@ export function EditTaskDialog({
         endDt: data.endDt ? new Date(data.endDt).toISOString() : null,
         deadlineDt: data.deadlineDt ? new Date(data.deadlineDt).toISOString() : null,
       });
+
+      if (data.assigneeUserId !== initialAssignee) {
+        await updateAssignee.mutateAsync(data.assigneeUserId || null);
+      }
+
+      if (data.reviewerUserId !== initialReviewer) {
+        await updateReviewer.mutateAsync(data.reviewerUserId || null);
+      }
+
       toast({ title: 'Success', description: 'Task updated successfully' });
       onOpenChange(false);
     } catch (error: unknown) {
@@ -129,7 +154,7 @@ export function EditTaskDialog({
         <div className="flex flex-col max-h-[90vh] min-h-0">
           <DialogHeader className="flex-shrink-0 px-6 pt-6 pb-4">
             <DialogTitle>Edit Task</DialogTitle>
-            <DialogDescription>Update task details (assignee and reviewer are changed separately)</DialogDescription>
+            <DialogDescription>Update task details including assignee and reviewer</DialogDescription>
           </DialogHeader>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 min-h-0">
@@ -213,24 +238,76 @@ export function EditTaskDialog({
                     )}
                   />
                 </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="priority"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Priority</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="P0">P0 - Critical</SelectItem>
+                            <SelectItem value="P1">P1 - High</SelectItem>
+                            <SelectItem value="P2">P2 - Medium</SelectItem>
+                            <SelectItem value="P3">P3 - Low</SelectItem>
+                            <SelectItem value="P4">P4 - Lowest</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="assigneeUserId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Assignee</FormLabel>
+                        <Select onValueChange={(v) => field.onChange(v === 'none' ? null : v)} value={field.value ?? 'none'}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Unassigned" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="none">Unassigned</SelectItem>
+                            {members.map((m) => (
+                              <SelectItem key={m.user.id} value={m.user.id}>
+                                {m.user.name || m.user.email} {m.user.isVirtual ? '(virtual)' : ''}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
                 <FormField
                   control={form.control}
-                  name="priority"
+                  name="reviewerUserId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Priority</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <FormLabel>Reviewer</FormLabel>
+                      <Select onValueChange={(v) => field.onChange(v === 'none' ? null : v)} value={field.value ?? 'none'}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue />
+                            <SelectValue placeholder="No reviewer" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="P0">P0 - Critical</SelectItem>
-                          <SelectItem value="P1">P1 - High</SelectItem>
-                          <SelectItem value="P2">P2 - Medium</SelectItem>
-                          <SelectItem value="P3">P3 - Low</SelectItem>
-                          <SelectItem value="P4">P4 - Lowest</SelectItem>
+                          <SelectItem value="none">No reviewer</SelectItem>
+                          {members.map((m) => (
+                            <SelectItem key={m.user.id} value={m.user.id}>
+                              {m.user.name || m.user.email} {m.user.isVirtual ? '(virtual)' : ''}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -313,11 +390,11 @@ export function EditTaskDialog({
                 </div>
               </div>
               <DialogFooter className="flex-shrink-0 px-6 py-4 border-t">
-                <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={updateTask.isPending}>
+                <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={updateTask.isPending || updateAssignee.isPending || updateReviewer.isPending}>
                   Cancel
                 </Button>
-                <Button type="submit" disabled={updateTask.isPending}>
-                  {updateTask.isPending ? 'Saving...' : 'Save'}
+                <Button type="submit" disabled={updateTask.isPending || updateAssignee.isPending || updateReviewer.isPending}>
+                  {updateTask.isPending || updateAssignee.isPending || updateReviewer.isPending ? 'Saving...' : 'Save'}
                 </Button>
               </DialogFooter>
             </form>

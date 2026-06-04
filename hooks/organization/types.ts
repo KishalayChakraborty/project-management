@@ -108,5 +108,6 @@ export interface ProjectTeamMember {
     email: string;
     name?: string | null;
     avatar?: string | null;
+    isVirtual?: boolean;
   };
 }

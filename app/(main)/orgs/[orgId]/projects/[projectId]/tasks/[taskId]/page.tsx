@@ -269,7 +269,7 @@ export default function TaskDetailPage() {
                     <SelectItem value="none">Unassigned</SelectItem>
                     {members.map((m) => (
                       <SelectItem key={m.user.id} value={m.user.id}>
-                        {m.user.name || m.user.email}
+                        {m.user.name || m.user.email} {m.user.isVirtual ? '(virtual)' : ''}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -293,7 +293,7 @@ export default function TaskDetailPage() {
                     <SelectItem value="none">No reviewer</SelectItem>
                     {members.map((m) => (
                       <SelectItem key={m.user.id} value={m.user.id}>
-                        {m.user.name || m.user.email}
+                        {m.user.name || m.user.email} {m.user.isVirtual ? '(virtual)' : ''}
                       </SelectItem>
                     ))}
                   </SelectContent>
