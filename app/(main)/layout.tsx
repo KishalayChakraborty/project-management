@@ -18,15 +18,9 @@ import {
   SidebarRail,
   SidebarTrigger,
 } from '@/components/ui/sidebar';
-import { LayoutDashboard, Building2, ListTodo, ClipboardList } from 'lucide-react';
 import { Loading } from '@/components/ui/loading';
-
-const homeNavItems = [
-  { title: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
-  { title: 'Organizations', icon: Building2, href: '/organizations' },
-  { title: 'My Tasks', icon: ClipboardList, href: '/my-tasks' },
-  { title: 'Pending Tasks', icon: ListTodo, href: '/pending-tasks' },
-];
+import { homeNavItems } from '@/lib/navigation-constants';
+import { FloatingPriorityPanel } from '@/components/tasks/FloatingPriorityPanel';
 
 export default function MainLayout({
   children,
@@ -126,6 +120,7 @@ export default function MainLayout({
           <div className="flex flex-1 flex-col gap-4 p-4">
             {children}
           </div>
+          <FloatingPriorityPanel />
         </SidebarInset>
       </SidebarProvider>
     );
@@ -156,6 +151,7 @@ export default function MainLayout({
         </div>
       </nav>
       <main>{children}</main>
+      <FloatingPriorityPanel />
     </div>
   );
 }

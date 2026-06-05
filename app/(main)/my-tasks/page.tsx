@@ -3,10 +3,12 @@
 import { useState, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { useMyTasks, type MyTask, type MyTasksOrg } from '@/hooks/dashboard/useMyTasks';
 import { useDebounce } from '@/hooks/useDebounce';
 import { AddTaskFlow } from '@/components/tasks/AddTaskFlow';
 import { EditTaskDialog } from '@/components/tasks/EditTaskDialog';
+import { usePriorityTaskList } from '@/hooks/usePriorityTaskList';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,6 +38,7 @@ import {
   Building2,
   FolderKanban,
   AlertCircle,
+  Star,
 } from 'lucide-react';
 import type { Task } from '@/hooks/tasks/useTasks';
 
@@ -163,15 +166,20 @@ function PrioritySelect({
 // ─── task row ────────────────────────────────────────────────────────────────
 
 function TaskRow({
-  task, orgId, role, onEdit, onOpen, onUpdated,
+  task, orgId, role, onEdit, onOpen, onUpdated, onAddPriority,
 }: {
   task: MyTask; orgId: string; role: string;
-  onEdit: () => void; onOpen: () => void; onUpdated: () => void;
+  onEdit: () => void; onOpen: () => void; onUpdated: () => void; onAddPriority: () => void;
 }) {
   const overdue = isOverdue(task.deadlineDt) && !['DONE', 'ARCHIVED'].includes(task.status);
+  const { hasTask, isLoaded, applyHighlight } = usePriorityTaskList();
 
   return (
-    <div className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-muted/40 transition-colors group">
+    <div
+      className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-muted/40 transition-colors group cursor-pointer"
+      id={`task-row-${task.id}`}
+      onClick={() => applyHighlight(task.id)}
+    >
       {/* Priority inline */}
       <div onClick={(e) => e.stopPropagation()}>
         <PrioritySelect task={task} orgId={orgId} onUpdated={onUpdated} />
@@ -180,7 +188,10 @@ function TaskRow({
       {/* Title */}
       <button
         className="flex-1 text-left text-sm font-medium hover:underline truncate"
-        onClick={onOpen}
+        onDoubleClick={(e) => {
+          e.stopPropagation();
+          onOpen();
+        }}
       >
         {task.title}
       </button>
@@ -199,7 +210,20 @@ function TaskRow({
       </div>
 
       {/* Actions */}
-      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+      <div className="flex gap-1 items-center shrink-0">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onAddPriority(); }}
+            >
+              <Star className={`h-3.5 w-3.5 ${hasTask(task.id) ? 'fill-yellow-500 text-yellow-500' : 'text-muted-foreground hover:text-yellow-500'}`} />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{hasTask(task.id) ? 'Remove from priority list' : 'Add to priority list'}</TooltipContent>
+        </Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>
             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onEdit}>
@@ -224,7 +248,7 @@ function TaskRow({
 // ─── project group ────────────────────────────────────────────────────────────
 
 function ProjectGroup({
-  entry, orgId, role, router, onEdit, onUpdated, searchQ, statusFilter, onAddTask,
+  entry, orgId, role, router, onEdit, onUpdated, searchQ, statusFilter, onAddTask, onAddPriority,
 }: {
   entry: MyTasksOrg['projects'][0];
   orgId: string; role: string;
@@ -233,6 +257,7 @@ function ProjectGroup({
   onUpdated: () => void;
   searchQ: string; statusFilter: string;
   onAddTask: (orgId: string, projectId: string) => void;
+  onAddPriority: (task: MyTask, orgId: string) => void;
 }) {
   const [open, setOpen] = useState(true);
 
@@ -286,6 +311,7 @@ function ProjectGroup({
                 onEdit={() => onEdit(task, orgId)}
                 onOpen={() => router.push(getTaskRoute(task, orgId, role))}
                 onUpdated={onUpdated}
+                onAddPriority={() => onAddPriority(task, orgId)}
               />
             ))
           )}
@@ -298,7 +324,7 @@ function ProjectGroup({
 // ─── org group ────────────────────────────────────────────────────────────────
 
 function OrgGroup({
-  entry, router, searchQ, statusFilter, onEdit, onUpdated, onAddTask,
+  entry, router, searchQ, statusFilter, onEdit, onUpdated, onAddTask, onAddPriority,
 }: {
   entry: MyTasksOrg;
   router: ReturnType<typeof useRouter>;
@@ -306,6 +332,7 @@ function OrgGroup({
   onEdit: (task: MyTask, orgId: string) => void;
   onUpdated: () => void;
   onAddTask: (orgId: string, projectId?: string) => void;
+  onAddPriority: (task: MyTask, orgId: string) => void;
 }) {
   const [open, setOpen] = useState(true);
 
@@ -363,6 +390,7 @@ function OrgGroup({
               searchQ={searchQ}
               statusFilter={statusFilter}
               onAddTask={onAddTask}
+              onAddPriority={onAddPriority}
             />
           ))}
         </div>
@@ -376,6 +404,8 @@ function OrgGroup({
 export default function MyTasksPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const { addTask, removeTask, hasTask, isLoaded, applyHighlight } = usePriorityTaskList();
 
   const { data, isLoading } = useMyTasks();
   const [search, setSearch] = useState('');
@@ -401,6 +431,26 @@ export default function MyTasksPage() {
     setAddTaskProjectId(projectId);
     setAddTaskOpen(true);
   }
+
+  const { data: session } = useSession();
+
+  const handleAddToPriorityList = useCallback((task: MyTask, orgId: string) => {
+    if (hasTask(task.id)) {
+      removeTask(task.id);
+      toast({ title: 'Removed from priority list' });
+    } else {
+      addTask({
+        taskId: task.id,
+        orgId,
+        projectId: task.projectId,
+        title: task.title,
+        priority: task.priority,
+        status: task.status,
+        assigneeId: session?.user?.email,
+      });
+      toast({ title: 'Added to priority list' });
+    }
+  }, [addTask, removeTask, hasTask, toast, session?.user?.email]);
 
   return (
     <TooltipProvider>
@@ -477,6 +527,7 @@ export default function MyTasksPage() {
                   onEdit={(task, orgId) => setEditTask({ task, orgId })}
                   onUpdated={refreshAll}
                   onAddTask={handleAddTask}
+                  onAddPriority={handleAddToPriorityList}
                 />
               ))}
             </CardContent>

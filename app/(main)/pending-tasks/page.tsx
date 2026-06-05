@@ -7,6 +7,7 @@ import { usePendingTasks, type PendingTask } from '@/hooks/dashboard/usePendingT
 import { useDebounce } from '@/hooks/useDebounce';
 import { AddTaskFlow } from '@/components/tasks/AddTaskFlow';
 import { EditTaskDialog } from '@/components/tasks/EditTaskDialog';
+import { usePriorityTaskList } from '@/hooks/usePriorityTaskList';
 import { MultiSelectFilter, type MultiSelectOption } from '@/components/ui/multi-select-filter';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -38,7 +39,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { api } from '@/lib/axios';
 import {
   Plus, Pencil, ArrowUpDown, ArrowUp, ArrowDown,
-  ChevronLeft, ChevronRight, ExternalLink,
+  ChevronLeft, ChevronRight, ExternalLink, Star,
 } from 'lucide-react';
 import type { Task } from '@/hooks/tasks/useTasks';
 
@@ -141,6 +142,7 @@ export default function PendingTasksPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { addTask, removeTask, hasTask, isLoaded, applyHighlight } = usePriorityTaskList();
 
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 400);
@@ -159,6 +161,24 @@ export default function PendingTasksPage() {
   const [editTask, setEditTask] = useState<PendingTask | null>(null);
 
   const { data: tasksData, isLoading } = usePendingTasks({ sortBy, sortOrder, page, limit: 20 });
+
+  const handleTogglePriorityList = useCallback((task: PendingTask) => {
+    if (hasTask(task.id)) {
+      removeTask(task.id);
+      toast({ title: 'Removed from priority list' });
+    } else {
+      addTask({
+        taskId: task.id,
+        orgId: task.project.orgId,
+        projectId: task.project.id,
+        title: task.title,
+        priority: task.priority,
+        status: task.status,
+        assigneeId: task.assignee?.email,
+      });
+      toast({ title: 'Added to priority list' });
+    }
+  }, [addTask, removeTask, hasTask, toast]);
 
   const tasks = tasksData?.tasks ?? [];
   const totalPages = tasksData?.totalPages ?? 0;
@@ -325,13 +345,21 @@ export default function PendingTasksPage() {
                       </TableHeader>
                       <TableBody>
                         {filteredTasks.map((task) => (
-                          <TableRow key={task.id} className="group">
+                          <TableRow
+                            key={task.id}
+                            id={`task-row-${task.id}`}
+                            className="group cursor-pointer"
+                            onClick={() => applyHighlight(task.id)}
+                          >
                             <TableCell onClick={(e) => e.stopPropagation()}>
                               <PrioritySelect task={task} onUpdated={refreshAll} />
                             </TableCell>
                             <TableCell
                               className="font-medium cursor-pointer hover:underline max-w-[240px]"
-                              onClick={() => router.push(getTaskRoute(task))}
+                              onDoubleClick={(e) => {
+                                e.stopPropagation();
+                                router.push(getTaskRoute(task));
+                              }}
                             >
                               <span className="truncate block">{task.title}</span>
                               {task.reviewer && (
@@ -371,7 +399,20 @@ export default function PendingTasksPage() {
                                 : <span className="text-muted-foreground">—</span>}
                             </TableCell>
                             <TableCell onClick={(e) => e.stopPropagation()}>
-                              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <div className="flex gap-1 items-center">
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-7 w-7"
+                                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleTogglePriorityList(task); }}
+                                    >
+                                      <Star className={`h-3.5 w-3.5 ${hasTask(task.id) ? 'fill-yellow-500 text-yellow-500' : 'text-muted-foreground hover:text-yellow-500'}`} />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>{hasTask(task.id) ? 'Remove from priority list' : 'Add to priority list'}</TooltipContent>
+                                </Tooltip>
                                 <Tooltip>
                                   <TooltipTrigger asChild>
                                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditTask(task)}>

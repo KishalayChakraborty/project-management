@@ -10,6 +10,7 @@ import {
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarInset,
   SidebarMenu,
@@ -21,6 +22,8 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar';
 import { LayoutDashboard, Users, Layers, FolderKanban, ChevronRight } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
+import { homeNavItems } from '@/lib/navigation-constants';
 
 const orgNavItems = [
   { title: 'Overview', icon: LayoutDashboard, segment: 'overview' },
@@ -117,6 +120,28 @@ export default function OrgLayout({
                     <SidebarMenuItem key={item.segment}>
                       <SidebarMenuButton asChild isActive={isActive}>
                         <Link href={href}>
+                          <Icon />
+                          <span>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+          <Separator className="my-2" />
+          <SidebarGroup>
+            <SidebarGroupLabel className="text-xs">Global</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {homeNavItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = pathname === item.href;
+                  return (
+                    <SidebarMenuItem key={item.href}>
+                      <SidebarMenuButton asChild isActive={isActive}>
+                        <Link href={item.href}>
                           <Icon />
                           <span>{item.title}</span>
                         </Link>

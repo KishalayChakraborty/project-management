@@ -123,3 +123,27 @@
     @apply bg-background text-foreground;
   }
 }
+
+@keyframes highlightBlink {
+  0% {
+    background-color: oklch(0.75 0.25 54.3);
+    box-shadow: 0 0 8px oklch(0.75 0.25 54.3);
+  }
+  25% {
+    background-color: oklch(0.75 0.25 54.3);
+    box-shadow: 0 0 8px oklch(0.75 0.25 54.3);
+  }
+  50% {
+    background-color: oklch(0.9 0.08 54.3);
+    box-shadow: none;
+  }
+  100% {
+    background-color: oklch(0.9 0.08 54.3);
+    box-shadow: none;
+  }
+}
+
+.highlight-task {
+  animation: highlightBlink 1.5s ease-in-out !important;
+  background-color: oklch(0.9 0.08 54.3) !important;
+}
