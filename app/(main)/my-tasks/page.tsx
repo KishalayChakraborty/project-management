@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
@@ -39,6 +39,8 @@ import {
   FolderKanban,
   AlertCircle,
   Star,
+  Grid3x3,
+  List,
 } from 'lucide-react';
 import type { Task } from '@/hooks/tasks/useTasks';
 
@@ -87,6 +89,30 @@ function getTaskRoute(task: MyTask, orgId: string, role: string): string {
 function isOverdue(deadline?: string | null) {
   if (!deadline) return false;
   return new Date(deadline) < new Date();
+}
+
+function getTaskDaysInStatus(task: MyTask): number {
+  if (!task.updatedAt) return 0;
+  const now = new Date();
+  const updated = new Date(task.updatedAt);
+  return Math.floor((now.getTime() - updated.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function getDaysUntilDeadline(deadline?: string | null): number | null {
+  if (!deadline) return null;
+  const now = new Date();
+  const dead = new Date(deadline);
+  const days = Math.ceil((dead.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  return days;
+}
+
+function getTasksByPriority(tasks: MyTask[]) {
+  return {
+    p0: tasks.filter(t => t.priority === 'P0').length,
+    p1: tasks.filter(t => t.priority === 'P1').length,
+    p2: tasks.filter(t => t.priority === 'P2').length,
+    p3p4: tasks.filter(t => t.priority === 'P3' || t.priority === 'P4').length,
+  };
 }
 
 // ─── inline status select ────────────────────────────────────────────────────
@@ -166,17 +192,24 @@ function PrioritySelect({
 // ─── task row ────────────────────────────────────────────────────────────────
 
 function TaskRow({
-  task, orgId, role, onEdit, onOpen, onUpdated, onAddPriority,
+  task, orgId, role, onEdit, onOpen, onUpdated, onAddPriority, compact = false,
 }: {
   task: MyTask; orgId: string; role: string;
   onEdit: () => void; onOpen: () => void; onUpdated: () => void; onAddPriority: () => void;
+  compact?: boolean;
 }) {
   const overdue = isOverdue(task.deadlineDt) && !['DONE', 'ARCHIVED'].includes(task.status);
-  const { hasTask, isLoaded, applyHighlight } = usePriorityTaskList();
+  const daysLeft = getDaysUntilDeadline(task.deadlineDt);
+  const daysInStatus = getTaskDaysInStatus(task);
+  const { hasTask, applyHighlight } = usePriorityTaskList();
+
+  const isUrgent = overdue || (daysLeft !== null && daysLeft < 2);
 
   return (
     <div
-      className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-muted/40 transition-colors group cursor-pointer"
+      className={`flex items-center gap-2 px-3 py-2 rounded-md hover:bg-muted/40 transition-colors group cursor-pointer ${
+        isUrgent ? 'border-l-4 border-destructive bg-destructive/5' : ''
+      }`}
       id={`task-row-${task.id}`}
       onClick={() => applyHighlight(task.id)}
     >
@@ -198,16 +231,37 @@ function TaskRow({
 
       {/* Deadline */}
       {task.deadlineDt && (
-        <span className={`text-xs shrink-0 flex items-center gap-1 ${overdue ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
-          {overdue && <AlertCircle className="h-3 w-3" />}
-          {new Date(task.deadlineDt).toLocaleDateString()}
-        </span>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className={`text-xs shrink-0 flex items-center gap-1 px-1.5 py-0.5 rounded ${
+              overdue ? 'bg-destructive/10 text-destructive font-medium' :
+              daysLeft !== null && daysLeft < 3 ? 'bg-yellow-500/10 text-yellow-700' :
+              'text-muted-foreground'
+            }`}>
+              {overdue && <AlertCircle className="h-3 w-3" />}
+              {overdue ? `${Math.abs(daysLeft ?? 0)} days overdue` :
+               daysLeft !== null ? `${daysLeft}d left` :
+               new Date(task.deadlineDt).toLocaleDateString()}
+            </span>
+          </TooltipTrigger>
+          <TooltipContent>{new Date(task.deadlineDt).toLocaleDateString()}</TooltipContent>
+        </Tooltip>
       )}
 
       {/* Status inline */}
       <div onClick={(e) => e.stopPropagation()}>
         <StatusSelect task={task} orgId={orgId} onUpdated={onUpdated} />
       </div>
+
+      {/* Task Duration */}
+      {!compact && daysInStatus > 0 && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="text-xs text-muted-foreground shrink-0">{daysInStatus}d</span>
+          </TooltipTrigger>
+          <TooltipContent>In {task.status.replace('_', ' ').toLowerCase()} for {daysInStatus} days</TooltipContent>
+        </Tooltip>
+      )}
 
       {/* Actions */}
       <div className="flex gap-1 items-center shrink-0">
@@ -248,7 +302,7 @@ function TaskRow({
 // ─── project group ────────────────────────────────────────────────────────────
 
 function ProjectGroup({
-  entry, orgId, role, router, onEdit, onUpdated, searchQ, statusFilter, onAddTask, onAddPriority,
+  entry, orgId, role, router, onEdit, onUpdated, searchQ, statusFilter, onAddTask, onAddPriority, sortBy, compact,
 }: {
   entry: MyTasksOrg['projects'][0];
   orgId: string; role: string;
@@ -258,8 +312,24 @@ function ProjectGroup({
   searchQ: string; statusFilter: string;
   onAddTask: (orgId: string, projectId: string) => void;
   onAddPriority: (task: MyTask, orgId: string) => void;
+  sortBy: 'deadline' | 'priority' | 'status' | 'created';
+  compact?: boolean;
 }) {
   const [open, setOpen] = useState(true);
+
+  const getSortValue = (task: MyTask) => {
+    switch (sortBy) {
+      case 'deadline':
+        return task.deadlineDt ? new Date(task.deadlineDt).getTime() : Infinity;
+      case 'priority':
+        const priorityMap: Record<string, number> = { P0: 0, P1: 1, P2: 2, P3: 3, P4: 4 };
+        return priorityMap[task.priority] ?? 5;
+      case 'created':
+        return task.createdAt ? new Date(task.createdAt).getTime() : 0;
+      default: // status
+        return (STATUS_ORDER[task.status] ?? 9);
+    }
+  };
 
   const filtered = entry.tasks
     .filter((t) => {
@@ -267,7 +337,7 @@ function ProjectGroup({
       if (searchQ && !t.title.toLowerCase().includes(searchQ)) return false;
       return true;
     })
-    .sort((a, b) => (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9));
+    .sort((a, b) => getSortValue(a) - getSortValue(b));
 
   const active = filtered.filter((t) => !['DONE', 'ARCHIVED'].includes(t.status)).length;
 
@@ -312,6 +382,7 @@ function ProjectGroup({
                 onOpen={() => router.push(getTaskRoute(task, orgId, role))}
                 onUpdated={onUpdated}
                 onAddPriority={() => onAddPriority(task, orgId)}
+                compact={compact}
               />
             ))
           )}
@@ -324,7 +395,7 @@ function ProjectGroup({
 // ─── org group ────────────────────────────────────────────────────────────────
 
 function OrgGroup({
-  entry, router, searchQ, statusFilter, onEdit, onUpdated, onAddTask, onAddPriority,
+  entry, router, searchQ, statusFilter, onEdit, onUpdated, onAddTask, onAddPriority, sortBy, compact,
 }: {
   entry: MyTasksOrg;
   router: ReturnType<typeof useRouter>;
@@ -333,6 +404,8 @@ function OrgGroup({
   onUpdated: () => void;
   onAddTask: (orgId: string, projectId?: string) => void;
   onAddPriority: (task: MyTask, orgId: string) => void;
+  sortBy: 'deadline' | 'priority' | 'status' | 'created';
+  compact?: boolean;
 }) {
   const [open, setOpen] = useState(true);
 
@@ -391,6 +464,8 @@ function OrgGroup({
               statusFilter={statusFilter}
               onAddTask={onAddTask}
               onAddPriority={onAddPriority}
+              sortBy={sortBy}
+              compact={compact}
             />
           ))}
         </div>
@@ -410,6 +485,8 @@ export default function MyTasksPage() {
   const { data, isLoading } = useMyTasks();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [sortBy, setSortBy] = useState<'deadline' | 'priority' | 'status' | 'created'>('status');
+  const [viewMode, setViewMode] = useState<'list' | 'compact'>('list');
   const debouncedSearch = useDebounce(search, 300);
 
   // Dialogs
@@ -434,6 +511,23 @@ export default function MyTasksPage() {
 
   const { data: session } = useSession();
 
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        const searchInput = document.querySelector('input[placeholder="Search tasks…"]') as HTMLInputElement;
+        searchInput?.focus();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+        e.preventDefault();
+        handleAddTask();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   const handleAddToPriorityList = useCallback((task: MyTask, orgId: string) => {
     if (hasTask(task.id)) {
       removeTask(task.id);
@@ -454,8 +548,8 @@ export default function MyTasksPage() {
 
   return (
     <TooltipProvider>
-      <div className="space-y-6">
-        <div className="flex items-start justify-between gap-4">
+      <div className="space-y-0">
+        <div className="flex items-start justify-between gap-4 mb-6">
           <div>
             <h1 className="text-3xl font-bold">My Tasks</h1>
             <p className="text-muted-foreground">
@@ -464,34 +558,8 @@ export default function MyTasksPage() {
           </div>
           <Button onClick={() => handleAddTask()}>
             <Plus className="h-4 w-4 mr-2" />
-            Add Task
+            Add Task (Ctrl+N)
           </Button>
-        </div>
-
-        {/* Filters */}
-        <div className="flex gap-2 flex-wrap items-center">
-          <Input
-            placeholder="Search tasks…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="max-w-xs"
-          />
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              {STATUS_OPTIONS.map((o) => (
-                <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {total > 0 && (
-            <span className="text-sm text-muted-foreground ml-auto">
-              {total} total task{total !== 1 ? 's' : ''}
-            </span>
-          )}
         </div>
 
         {/* Content */}
@@ -512,11 +580,104 @@ export default function MyTasksPage() {
             </CardContent>
           </Card>
         ) : (
-          <Card>
-            <CardHeader>
+          <Card className="overflow-hidden">
+            <CardHeader className="pb-0">
               <CardTitle>Tasks by Organisation</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <div className="px-6 py-4 border-b sticky top-0 z-10 bg-background space-y-3">
+              <div className="flex gap-2 items-center flex-wrap">
+                <div className="flex-1">
+                  <Input
+                    placeholder="Search tasks… (Ctrl+K)"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="w-full max-w-sm"
+                  />
+                </div>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-[160px]">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    {STATUS_OPTIONS.map((o) => (
+                      <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
+                  <SelectTrigger className="w-[140px]">
+                    <SelectValue placeholder="Sort by" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="status">Sort: Status</SelectItem>
+                    <SelectItem value="deadline">Sort: Deadline</SelectItem>
+                    <SelectItem value="priority">Sort: Priority</SelectItem>
+                    <SelectItem value="created">Sort: Created</SelectItem>
+                  </SelectContent>
+                </Select>
+                <div className="flex gap-1 ml-auto">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant={viewMode === 'list' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setViewMode('list')}
+                      >
+                        <List className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>List view</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant={viewMode === 'compact' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setViewMode('compact')}
+                      >
+                        <Grid3x3 className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Compact view</TooltipContent>
+                  </Tooltip>
+                </div>
+              </div>
+
+              {/* Priority Stats */}
+              {total > 0 && (
+                <div className="flex gap-3 flex-wrap items-center text-xs">
+                  {(() => {
+                    const allTasks = grouped.flatMap(org => org.projects.flatMap(p => p.tasks));
+                    const stats = getTasksByPriority(allTasks);
+                    return (
+                      <>
+                        {stats.p0 > 0 && (
+                          <div className="flex items-center gap-1 px-2 py-1 bg-destructive/10 rounded">
+                            <span className="h-2 w-2 rounded-full bg-destructive"></span>
+                            <span className="font-medium">{stats.p0} Critical</span>
+                          </div>
+                        )}
+                        {stats.p1 > 0 && (
+                          <div className="flex items-center gap-1 px-2 py-1 bg-orange-500/10 rounded">
+                            <span className="h-2 w-2 rounded-full bg-orange-500"></span>
+                            <span className="font-medium">{stats.p1} High</span>
+                          </div>
+                        )}
+                        {stats.p2 > 0 && (
+                          <div className="flex items-center gap-1 px-2 py-1 bg-blue-500/10 rounded">
+                            <span className="h-2 w-2 rounded-full bg-blue-500"></span>
+                            <span className="font-medium">{stats.p2} Medium</span>
+                          </div>
+                        )}
+                        <span className="text-muted-foreground ml-auto">{total} total</span>
+                      </>
+                    );
+                  })()}
+                </div>
+              )}
+            </div>
+            <CardContent className="space-y-6 pt-6">
               {grouped.map((entry) => (
                 <OrgGroup
                   key={entry.org.id}
@@ -528,6 +689,8 @@ export default function MyTasksPage() {
                   onUpdated={refreshAll}
                   onAddTask={handleAddTask}
                   onAddPriority={handleAddToPriorityList}
+                  sortBy={sortBy}
+                  compact={viewMode === 'compact'}
                 />
               ))}
             </CardContent>
