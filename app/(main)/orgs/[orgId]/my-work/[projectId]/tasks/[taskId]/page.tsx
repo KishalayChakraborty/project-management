@@ -7,12 +7,13 @@ import { useSession } from 'next-auth/react';
 import { useTask, useUpdateTask, type TaskDetail } from '@/hooks/tasks/useTasks';
 import { useTaskComments, useAddTaskComment, useDeleteTaskComment } from '@/hooks/tasks/useTaskComments';
 import { useActiveWorkSession, useStartWorkSession, usePauseWorkSession, useResumeWorkSession, useStopWorkSession } from '@/hooks/work-logs/useWorkSessions';
+import { useOpenFloatingComment } from '@/hooks/useOpenFloatingComment';
 import { WorkSessionWidget } from '@/components/work-logs/WorkSessionWidget';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Play, CheckSquare, Send, Trash2, Loader2, Clock } from 'lucide-react';
+import { ArrowLeft, Play, CheckSquare, Send, Trash2, Loader2, Clock, MessageSquare } from 'lucide-react';
 
 function formatDuration(minutes: number) {
   const h = Math.floor(minutes / 60);
@@ -93,6 +94,7 @@ export default function MemberTaskDetailPage() {
 
   const [commentText, setCommentText] = useState('');
   const [chatSearch, setChatSearch] = useState('');
+  const { openComment } = useOpenFloatingComment();
 
   const { data: task, isLoading } = useTask(orgId, projectId, taskId);
   const updateTask = useUpdateTask(orgId, projectId, taskId);
@@ -146,41 +148,51 @@ export default function MemberTaskDetailPage() {
             </Link>
           </Button>
 
-          {canUpdate && (
-            <div className="flex gap-2">
-              {!workSessionData?.session || workSessionData.session.taskId !== taskId ? (
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => openComment(orgId, projectId, taskId, task.title)}
+            >
+              <MessageSquare className="h-4 w-4 mr-1" />
+              Comments
+            </Button>
+            {canUpdate && (
+              <>
+                {!workSessionData?.session || workSessionData.session.taskId !== taskId ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => startSession.mutate(taskId)}
+                    disabled={startSession.isPending || !!workSessionData?.session}
+                  >
+                    <Clock className="h-4 w-4 mr-1" />
+                    {workSessionData?.session ? 'Working on another task' : 'Start work session'}
+                  </Button>
+                ) : null}
+                {task.status !== 'IN_PROGRESS' && task.status !== 'REVIEW' && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => updateTask.mutate({ status: 'IN_PROGRESS' })}
+                    disabled={updateTask.isPending}
+                  >
+                    <Play className="h-4 w-4 mr-1" />
+                    Start
+                  </Button>
+                )}
                 <Button
                   size="sm"
-                  variant="outline"
-                  onClick={() => startSession.mutate(taskId)}
-                  disabled={startSession.isPending || !!workSessionData?.session}
-                >
-                  <Clock className="h-4 w-4 mr-1" />
-                  {workSessionData?.session ? 'Working on another task' : 'Start work session'}
-                </Button>
-              ) : null}
-              {task.status !== 'IN_PROGRESS' && task.status !== 'REVIEW' && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => updateTask.mutate({ status: 'IN_PROGRESS' })}
+                  variant="secondary"
+                  onClick={() => updateTask.mutate({ status: 'DONE' })}
                   disabled={updateTask.isPending}
                 >
-                  <Play className="h-4 w-4 mr-1" />
-                  Start
+                  <CheckSquare className="h-4 w-4 mr-1" />
+                  Mark done
                 </Button>
-              )}
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => updateTask.mutate({ status: 'DONE' })}
-                disabled={updateTask.isPending}
-              >
-                <CheckSquare className="h-4 w-4 mr-1" />
-                Mark done
-              </Button>
-            </div>
-          )}
+              </>
+            )}
+          </div>
         </div>
 
         <Card>

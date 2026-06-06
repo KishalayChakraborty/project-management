@@ -21,6 +21,7 @@ import {
 import { Loading } from '@/components/ui/loading';
 import { homeNavItems } from '@/lib/navigation-constants';
 import { FloatingPriorityPanel } from '@/components/tasks/FloatingPriorityPanel';
+import { FloatingCommentPanel } from '@/components/comments/FloatingCommentPanel';
 
 export default function MainLayout({
   children,
@@ -123,6 +124,7 @@ export default function MainLayout({
             {children}
           </div>
           <FloatingPriorityPanel />
+          <FloatingCommentPanel />
         </SidebarInset>
       </SidebarProvider>
     );
@@ -154,6 +156,7 @@ export default function MainLayout({
       </nav>
       <main>{children}</main>
       <FloatingPriorityPanel />
+      <FloatingCommentPanel />
     </div>
   );
 }
