@@ -1,8 +1,10 @@
-import { LayoutDashboard, Building2, ListTodo, ClipboardList } from 'lucide-react';
+import { LayoutDashboard, Building2, ListTodo, ClipboardList, Clock } from 'lucide-react';
 
 export const homeNavItems = [
   { title: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
   { title: 'Organizations', icon: Building2, href: '/organizations' },
   { title: 'My Tasks', icon: ClipboardList, href: '/my-tasks' },
   { title: 'Pending Tasks', icon: ListTodo, href: '/pending-tasks' },
+  { title: 'My Work Logs', icon: Clock, href: '/my-worklog' },
+  { title: 'All Work Logs', icon: Clock, href: '/all-worklog' },
 ];

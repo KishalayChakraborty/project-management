@@ -98,6 +98,12 @@ enum OrgInviteStatus {
   EXPIRED
 }
 
+enum WorkSessionStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+}
+
 model User {
   id           String     @id @default(uuid())
   email        String     @unique
@@ -138,6 +144,7 @@ model User {
   recurringTasksCreated     RecurringTaskTemplate[]   @relation("RecurringCreator")
   recurringTasksAssigned    RecurringTaskTemplate[]   @relation("RecurringAssignee")
   recurringTasksReviewed    RecurringTaskTemplate[]   @relation("RecurringReviewer")
+  workSessions              WorkSession[]
 
   @@index([isVirtual])
   @@index([createdByUserId])
@@ -163,6 +170,7 @@ model Organization {
   teams        Team[]
   projects     Project[]
   workLogs     WorkLog[]
+  workSessions WorkSession[]
   inventoryItems InventoryItem[]
   inventoryLogs InventoryLog[]
   transactions Transaction[]
@@ -265,6 +273,7 @@ model Project {
   userLinks     ProjectUserLink[]
   tasks         Task[]
   workLogs      WorkLog[]
+  workSessions  WorkSession[]
   inventoryLinks InventoryLink[]
   docs              ProjectDoc[]
   recurringTemplates RecurringTaskTemplate[]
@@ -328,6 +337,7 @@ model Task {
   reviewerTransfers TaskReviewerTransfer[]
   tags            TaskTag[]
   workLogs        WorkLog[]
+  workSessions    WorkSession[]
   inventoryLinks  InventoryLink[]
   comments        TaskComment[]
   occurrence      RecurringTaskOccurrence?
@@ -441,6 +451,45 @@ model WorkLogSegment {
 
   @@index([workLogId])
   @@map("work_log_segments")
+}
+
+model WorkSession {
+  id               String             @id @default(uuid())
+  orgId            String             @map("org_id")
+  projectId        String             @map("project_id")
+  taskId           String             @map("task_id")
+  userId           String             @map("user_id")
+  startDt          DateTime           @map("start_dt")
+  completedDt      DateTime?          @map("completed_dt")
+  totalDurationMin Int                @default(0) @map("total_duration_min")
+  status           WorkSessionStatus  @default(ACTIVE)
+  createdAt        DateTime           @default(now()) @map("created_at")
+
+  org              Organization       @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  project          Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  task             Task               @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  segments         WorkSessionSegment[]
+
+  @@index([orgId])
+  @@index([projectId])
+  @@index([userId])
+  @@index([status])
+  @@map("work_sessions")
+}
+
+model WorkSessionSegment {
+  id          String    @id @default(uuid())
+  sessionId   String    @map("session_id")
+  startDt     DateTime  @map("start_dt")
+  endDt       DateTime? @map("end_dt")
+  durationMin Int       @default(0) @map("duration_min")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  session     WorkSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@map("work_session_segments")
 }
 
 model InventoryItem {

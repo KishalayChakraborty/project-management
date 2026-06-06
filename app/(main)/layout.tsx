@@ -36,7 +36,9 @@ export default function MainLayout({
     pathname === '/dashboard' ||
     pathname === '/organizations' ||
     pathname === '/pending-tasks' ||
-    pathname === '/my-tasks';
+    pathname === '/my-tasks' ||
+    pathname === '/my-worklog' ||
+    pathname === '/all-worklog';
 
   if (status === 'loading') {
     return <Loading fullPage text="Refreshing session..." />;

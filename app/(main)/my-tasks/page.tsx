@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
@@ -41,8 +41,14 @@ import {
   Star,
   Grid3x3,
   List,
+  Play,
+  Pause,
+  Square,
+  Clock,
 } from 'lucide-react';
 import type { Task } from '@/hooks/tasks/useTasks';
+import { useActiveWorkSession, useStartWorkSession, usePauseWorkSession, useResumeWorkSession, useStopWorkSession } from '@/hooks/work-logs/useWorkSessions';
+import { useTaskWorkLogs } from '@/hooks/work-logs/useTaskWorkLogs';
 
 // ─── constants ────────────────────────────────────────────────────────────────
 
@@ -192,9 +198,9 @@ function PrioritySelect({
 // ─── task row ────────────────────────────────────────────────────────────────
 
 function TaskRow({
-  task, orgId, role, onEdit, onOpen, onUpdated, onAddPriority, compact = false,
+  task, orgId, role, projectId, onEdit, onOpen, onUpdated, onAddPriority, compact = false,
 }: {
-  task: MyTask; orgId: string; role: string;
+  task: MyTask; orgId: string; role: string; projectId: string;
   onEdit: () => void; onOpen: () => void; onUpdated: () => void; onAddPriority: () => void;
   compact?: boolean;
 }) {
@@ -204,6 +210,69 @@ function TaskRow({
   const { hasTask, applyHighlight } = usePriorityTaskList();
 
   const isUrgent = overdue || (daysLeft !== null && daysLeft < 2);
+
+  const { data: workSessionData } = useActiveWorkSession(orgId, projectId);
+  const { data: workLogsData } = useTaskWorkLogs(orgId, projectId, task.id);
+  const startSession = useStartWorkSession(orgId, projectId);
+  const pauseSession = usePauseWorkSession(orgId, projectId);
+  const resumeSession = useResumeWorkSession(orgId, projectId);
+  const stopSession = useStopWorkSession(orgId, projectId);
+
+  const [sessionTimer, setSessionTimer] = useState('00:00:00');
+  const clientServerOffsetRef = useRef<number | null>(null);
+
+  const hasActiveSession = workSessionData?.session?.taskId === task.id;
+  const hasOtherSession = !!(workSessionData?.session && workSessionData.session.taskId !== task.id);
+  const totalWorkTime = workLogsData?.totalMinutes || 0;
+  const session = hasActiveSession ? workSessionData?.session : null;
+
+  // Calculate client-server time offset when session becomes active
+  useEffect(() => {
+    if (session && session.status === 'ACTIVE' && clientServerOffsetRef.current === null) {
+      const lastSegment = session.segments[session.segments.length - 1];
+      if (lastSegment && lastSegment.startDt) {
+        const serverTime = new Date(lastSegment.startDt).getTime();
+        const clientTime = Date.now();
+        // Offset = how much ahead the server is compared to client
+        clientServerOffsetRef.current = serverTime - clientTime;
+      }
+    }
+    if (!session) {
+      clientServerOffsetRef.current = null;
+    }
+  }, [session?.id, session?.status]);
+
+  // Timer update effect - runs every 500ms
+  useEffect(() => {
+    if (!session) return;
+
+    const updateTimer = () => {
+      let totalMs = session.totalDurationMin * 60 * 1000;
+
+      if (session.status === 'ACTIVE') {
+        const lastSegment = session.segments[session.segments.length - 1];
+        if (lastSegment && lastSegment.startDt && clientServerOffsetRef.current !== null) {
+          const serverStartTime = new Date(lastSegment.startDt).getTime();
+          const clientStartTime = serverStartTime - clientServerOffsetRef.current;
+          const msElapsed = Math.max(0, Date.now() - clientStartTime);
+          totalMs += msElapsed;
+        }
+      }
+
+      const totalSeconds = Math.max(0, Math.floor(totalMs / 1000));
+      const hours = Math.floor(totalSeconds / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const seconds = totalSeconds % 60;
+
+      setSessionTimer(
+        `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+      );
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 500);
+    return () => clearInterval(interval);
+  }, [session]);
 
   return (
     <div
@@ -263,8 +332,104 @@ function TaskRow({
         </Tooltip>
       )}
 
+      {/* Total Work Time */}
+      {!compact && totalWorkTime > 0 && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="text-xs shrink-0 px-2 py-1 bg-blue-100 text-blue-700 rounded font-medium">
+              ⏱️ {Math.floor(totalWorkTime / 60)}h {totalWorkTime % 60}m
+            </span>
+          </TooltipTrigger>
+          <TooltipContent>Total time logged on this task</TooltipContent>
+        </Tooltip>
+      )}
+
+      {/* Active Session Timer */}
+      {hasActiveSession && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="flex gap-0.5 items-center shrink-0 bg-green-50 px-2 py-1 rounded border border-green-300 font-mono text-sm font-bold text-green-700">
+              {sessionTimer}
+            </div>
+          </TooltipTrigger>
+          <TooltipContent>Current session timer (active)</TooltipContent>
+        </Tooltip>
+      )}
+
+      {/* Work Session Controls */}
+      {hasActiveSession && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="flex gap-0.5 items-center shrink-0 bg-green-50 px-1.5 py-0.5 rounded border border-green-200">
+              <Clock className="h-3.5 w-3.5 text-green-600" />
+              {workSessionData?.session?.status === 'ACTIVE' ? (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-5 px-1 text-xs"
+                    onClick={(e) => { e.stopPropagation(); pauseSession.mutate(workSessionData.session!.id); }}
+                    disabled={pauseSession.isPending}
+                  >
+                    <Pause className="h-3 w-3" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-5 px-1 text-xs"
+                    onClick={(e) => { e.stopPropagation(); stopSession.mutate(workSessionData.session!.id); }}
+                    disabled={stopSession.isPending}
+                  >
+                    <Square className="h-3 w-3" />
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-5 px-1 text-xs"
+                    onClick={(e) => { e.stopPropagation(); resumeSession.mutate(workSessionData.session!.id); }}
+                    disabled={resumeSession.isPending}
+                  >
+                    <Play className="h-3 w-3" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-5 px-1 text-xs"
+                    onClick={(e) => { e.stopPropagation(); stopSession.mutate(workSessionData.session!.id); }}
+                    disabled={stopSession.isPending}
+                  >
+                    <Square className="h-3 w-3" />
+                  </Button>
+                </>
+              )}
+            </div>
+          </TooltipTrigger>
+          <TooltipContent>{workSessionData?.session?.status === 'ACTIVE' ? 'Pause or stop session' : 'Resume or stop session'}</TooltipContent>
+        </Tooltip>
+      )}
+
       {/* Actions */}
       <div className="flex gap-1 items-center shrink-0">
+        {!hasActiveSession && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); startSession.mutate(task.id); }}
+                disabled={startSession.isPending || hasOtherSession}
+                title={hasOtherSession ? 'You have an active session on another task' : 'Start work session'}
+              >
+                <Clock className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{hasOtherSession ? 'Stop current session first' : 'Start work session'}</TooltipContent>
+          </Tooltip>
+        )}
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
@@ -377,6 +542,7 @@ function ProjectGroup({
                 key={task.id}
                 task={task}
                 orgId={orgId}
+                projectId={entry.project.id}
                 role={role}
                 onEdit={() => onEdit(task, orgId)}
                 onOpen={() => router.push(getTaskRoute(task, orgId, role))}

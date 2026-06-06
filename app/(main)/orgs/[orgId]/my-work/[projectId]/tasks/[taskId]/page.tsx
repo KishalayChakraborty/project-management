@@ -6,11 +6,13 @@ import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { useTask, useUpdateTask, type TaskDetail } from '@/hooks/tasks/useTasks';
 import { useTaskComments, useAddTaskComment, useDeleteTaskComment } from '@/hooks/tasks/useTaskComments';
+import { useActiveWorkSession, useStartWorkSession, usePauseWorkSession, useResumeWorkSession, useStopWorkSession } from '@/hooks/work-logs/useWorkSessions';
+import { WorkSessionWidget } from '@/components/work-logs/WorkSessionWidget';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Play, CheckSquare, Send, Trash2, Loader2 } from 'lucide-react';
+import { ArrowLeft, Play, CheckSquare, Send, Trash2, Loader2, Clock } from 'lucide-react';
 
 function formatDuration(minutes: number) {
   const h = Math.floor(minutes / 60);
@@ -99,6 +101,12 @@ export default function MemberTaskDetailPage() {
   const deleteComment = useDeleteTaskComment(orgId, projectId, taskId);
   const allComments = commentsData?.pages.flatMap((p) => p.comments) ?? [];
 
+  const { data: workSessionData } = useActiveWorkSession(orgId, projectId);
+  const startSession = useStartWorkSession(orgId, projectId);
+  const pauseSession = usePauseWorkSession(orgId, projectId);
+  const resumeSession = useResumeWorkSession(orgId, projectId);
+  const stopSession = useStopWorkSession(orgId, projectId);
+
   if (isLoading) {
     return (
       <div className="flex h-[50vh] w-full items-center justify-center">
@@ -140,6 +148,17 @@ export default function MemberTaskDetailPage() {
 
           {canUpdate && (
             <div className="flex gap-2">
+              {!workSessionData?.session || workSessionData.session.taskId !== taskId ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => startSession.mutate(taskId)}
+                  disabled={startSession.isPending || !!workSessionData?.session}
+                >
+                  <Clock className="h-4 w-4 mr-1" />
+                  {workSessionData?.session ? 'Working on another task' : 'Start work session'}
+                </Button>
+              ) : null}
               {task.status !== 'IN_PROGRESS' && task.status !== 'REVIEW' && (
                 <Button
                   size="sm"
@@ -273,50 +292,118 @@ export default function MemberTaskDetailPage() {
               </div>
             )}
 
-            {detail?.workLogs && detail.workLogs.length > 0 && (
-              <div>
-                <h3 className="font-medium mb-2">Work logs</h3>
-                <ul className="space-y-2 border rounded-md divide-y">
-                  {detail.workLogs.map((log) => (
-                    <li key={log.id} className="p-3">
-                      <div className="flex justify-between text-sm">
-                        <span>
-                          {log.user.name || log.user.email} ·{' '}
-                          {new Date(log.createdAt).toLocaleString()}
-                        </span>
-                        <span className="font-medium">
-                          {formatDuration(log.totalDurationMin)}
-                        </span>
-                      </div>
-                      {log.segments && log.segments.length > 0 && (
-                        <div className="text-xs text-muted-foreground mt-1">
-                          {log.segments
-                            .map(
-                              (s) =>
-                                `${new Date(s.startDt).toLocaleTimeString()} – ${new Date(s.endDt).toLocaleTimeString()} (${s.durationMin}m)`
-                            )
-                            .join(', ')}
-                        </div>
-                      )}
-                    </li>
-                  ))}
-                </ul>
+            {/* Work Session Info and Logs */}
+            <div className="space-y-4">
+              {/* Total Time Summary */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h3 className="font-medium mb-3 text-sm">Time Summary</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Total Work Time</p>
+                    <p className="text-lg font-bold text-blue-600">
+                      {formatDuration(detail?.workLogs?.reduce((sum, log) => sum + log.totalDurationMin, 0) || 0)}
+                    </p>
+                  </div>
+                  {workSessionData?.session && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Current Session</p>
+                      <p className="text-lg font-bold text-green-600">
+                        {formatDuration(workSessionData.session.totalDurationMin)}
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
-            )}
+
+              {/* Work Logs Table */}
+              {detail?.workLogs && detail.workLogs.length > 0 && (
+                <div>
+                  <h3 className="font-medium mb-3">Work Log Details ({detail.workLogs.length})</h3>
+                  <div className="border rounded-lg overflow-hidden">
+                    <div className="bg-muted p-3 grid grid-cols-12 gap-2 text-xs font-semibold border-b">
+                      <div className="col-span-2">Date</div>
+                      <div className="col-span-2">Time</div>
+                      <div className="col-span-2">Duration</div>
+                      <div className="col-span-6">Session Details</div>
+                    </div>
+                    <div className="divide-y max-h-96 overflow-y-auto">
+                      {detail.workLogs.map((log) => (
+                        <div key={log.id} className="space-y-2">
+                          {/* Log Header */}
+                          <div className="p-3 grid grid-cols-12 gap-2 text-xs items-center bg-white hover:bg-muted/30">
+                            <div className="col-span-2 font-medium">
+                              {new Date(log.createdAt).toLocaleDateString()}
+                            </div>
+                            <div className="col-span-2 text-muted-foreground">
+                              {new Date(log.createdAt).toLocaleTimeString()}
+                            </div>
+                            <div className="col-span-2 font-bold text-blue-600">
+                              {formatDuration(log.totalDurationMin)}
+                            </div>
+                            <div className="col-span-6 text-muted-foreground">
+                              {log.segments && log.segments.length} segment{log.segments?.length !== 1 ? 's' : ''}
+                            </div>
+                          </div>
+
+                          {/* Segments */}
+                          {log.segments && log.segments.length > 0 && (
+                            <div className="px-3 pb-3 space-y-1 bg-muted/20 border-l-2 border-blue-300">
+                              {log.segments.map((seg, idx) => (
+                                <div key={idx} className="text-xs text-muted-foreground font-mono">
+                                  <span className="font-semibold text-foreground">#{idx + 1}</span>
+                                  {' '}
+                                  <span className="text-green-700">{new Date(seg.startDt).toLocaleTimeString()}</span>
+                                  {' → '}
+                                  <span className="text-red-700">{new Date(seg.endDt).toLocaleTimeString()}</span>
+                                  {' '}
+                                  <span className="inline-block bg-blue-100 text-blue-700 px-2 py-0.5 rounded ml-2">
+                                    {seg.durationMin}m
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* No Work Logs Message */}
+              {(!detail?.workLogs || detail.workLogs.length === 0) && !workSessionData?.session && (
+                <div className="text-center py-6 text-muted-foreground border rounded-lg bg-muted/10">
+                  <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No work logs yet. Start a work session to begin tracking time.</p>
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      <Card className="w-[450px] shrink-0 sticky top-4 flex flex-col h-[60vh]">
-        <CardHeader className="shrink-0 pb-3">
-          <CardTitle>Comments</CardTitle>
-          <Input
-            placeholder="Search comments..."
-            value={chatSearch}
-            onChange={(e) => setChatSearch(e.target.value)}
-            className="h-8 text-sm mt-2"
+      <div className="w-[450px] shrink-0 sticky top-4 space-y-4 flex flex-col">
+        {workSessionData?.session && (
+          <WorkSessionWidget
+            session={workSessionData.session}
+            onPause={() => pauseSession.mutate(workSessionData.session!.id)}
+            onResume={() => resumeSession.mutate(workSessionData.session!.id)}
+            onStop={() => stopSession.mutate(workSessionData.session!.id)}
+            isPausePending={pauseSession.isPending}
+            isResumePending={resumeSession.isPending}
+            isStopPending={stopSession.isPending}
           />
-        </CardHeader>
+        )}
+        <Card className="flex flex-col flex-1 min-h-0">
+          <CardHeader className="shrink-0 pb-3">
+            <CardTitle>Comments</CardTitle>
+            <Input
+              placeholder="Search comments..."
+              value={chatSearch}
+              onChange={(e) => setChatSearch(e.target.value)}
+              className="h-8 text-sm mt-2"
+            />
+          </CardHeader>
         <CardContent className="flex flex-col gap-4 overflow-hidden flex-1">
           <form
             className="flex gap-2 shrink-0"
@@ -406,7 +493,8 @@ export default function MemberTaskDetailPage() {
             )}
           </div>
         </CardContent>
-      </Card>
+        </Card>
+      </div>
     </div>
   );
 }
