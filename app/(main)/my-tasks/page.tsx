@@ -289,7 +289,9 @@ function TaskRow({
 
       {/* Title */}
       <button
-        className="flex-1 text-left text-sm font-medium hover:underline truncate"
+        className={`flex-1 text-left text-sm font-medium hover:underline truncate ${
+          task.status === 'DONE' ? 'line-through text-muted-foreground' : ''
+        }`}
         onDoubleClick={(e) => {
           e.stopPropagation();
           onOpen();
@@ -496,13 +498,22 @@ function ProjectGroup({
     }
   };
 
-  const filtered = entry.tasks
+  const allFiltered = entry.tasks
     .filter((t) => {
       if (statusFilter !== 'all' && t.status !== statusFilter) return false;
       if (searchQ && !t.title.toLowerCase().includes(searchQ)) return false;
       return true;
-    })
-    .sort((a, b) => getSortValue(a) - getSortValue(b));
+    });
+
+  // Separate active and done tasks
+  const activeTasks = allFiltered.filter((t) => !['DONE', 'ARCHIVED'].includes(t.status));
+  const doneTasks = allFiltered.filter((t) => ['DONE', 'ARCHIVED'].includes(t.status));
+
+  // Sort each group
+  const filtered = [
+    ...activeTasks.sort((a, b) => getSortValue(a) - getSortValue(b)),
+    ...doneTasks.sort((a, b) => getSortValue(a) - getSortValue(b)),
+  ];
 
   const active = filtered.filter((t) => !['DONE', 'ARCHIVED'].includes(t.status)).length;
 
