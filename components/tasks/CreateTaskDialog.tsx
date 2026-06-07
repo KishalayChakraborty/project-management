@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/dialog';
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/components/ui/use-toast';
+import { useLastTaskValues } from '@/hooks/tasks/useLastTaskValues';
 
 const createTaskSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -60,6 +61,7 @@ export function CreateTaskDialog({
   const { data: membersData } = useProjectTeamMembers(orgId, projectId);
   const createTask = useCreateTask(orgId, projectId);
   const { toast } = useToast();
+  const { save: saveLastValues } = useLastTaskValues(projectId);
 
   // Format a Date into the string format expected by datetime-local input
   const formatDateTimeLocal = (date: Date) => {
@@ -124,6 +126,13 @@ export function CreateTaskDialog({
         startDt: data.startDt || undefined,
         deadlineDt: data.deadlineDt || undefined,
       });
+
+      saveLastValues({
+        type: data.type ?? 'TASK',
+        priority: data.priority ?? 'P4',
+        assigneeUserId: data.assigneeUserId || null,
+      });
+
       toast({
         title: 'Success',
         description: 'Task created successfully',

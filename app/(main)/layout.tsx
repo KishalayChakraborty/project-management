@@ -37,6 +37,7 @@ export default function MainLayout({
     pathname === '/dashboard' ||
     pathname === '/organizations' ||
     pathname === '/pending-tasks' ||
+    pathname === '/all-tasks' ||
     pathname === '/my-tasks' ||
     pathname === '/my-worklog' ||
     pathname === '/all-worklog';

@@ -85,11 +85,13 @@ export default function MemberTaskDetailPage() {
 
   const fromParam = searchParams.get('from');
   const backHref = fromParam || `/orgs/${orgId}/my-work/${projectId}/tasks`;
-  const backLabel = fromParam === '/pending-tasks'
-    ? 'Back to Pending Tasks'
-    : fromParam === '/my-tasks'
-      ? 'Back to My Tasks'
-      : 'Back to my tasks';
+  const backLabel = fromParam === '/all-tasks'
+    ? 'Back to All Tasks'
+    : fromParam === '/pending-tasks'
+      ? 'Back to Pending Tasks'
+      : fromParam === '/my-tasks'
+        ? 'Back to My Tasks'
+        : 'Back to my tasks';
   const { data: session } = useSession();
 
   const [commentText, setCommentText] = useState('');

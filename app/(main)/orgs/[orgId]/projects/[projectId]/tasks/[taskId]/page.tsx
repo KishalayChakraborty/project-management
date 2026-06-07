@@ -111,11 +111,13 @@ export default function TaskDetailPage() {
 
   const fromParam = searchParams.get('from');
   const backHref = fromParam || `/orgs/${orgId}/projects/${projectId}/tasks`;
-  const backLabel = fromParam === '/pending-tasks'
-    ? 'Back to Pending Tasks'
-    : fromParam === '/my-tasks'
-      ? 'Back to My Tasks'
-      : 'Back to tasks';
+  const backLabel = fromParam === '/all-tasks'
+    ? 'Back to All Tasks'
+    : fromParam === '/pending-tasks'
+      ? 'Back to Pending Tasks'
+      : fromParam === '/my-tasks'
+        ? 'Back to My Tasks'
+        : 'Back to tasks';
 
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [blockedByTaskId, setBlockedByTaskId] = useState<string>("");

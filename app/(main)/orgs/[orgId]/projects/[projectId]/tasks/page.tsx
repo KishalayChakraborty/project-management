@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useTasks } from '@/hooks/tasks/useTasks';
 import { useUserRole } from '@/hooks/organization';
 import { useDebounce } from '@/hooks/useDebounce';
+import { useLastTaskValues } from '@/hooks/tasks/useLastTaskValues';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,7 +26,10 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { CreateTaskDialog } from '@/components/tasks/CreateTaskDialog';
-import { ArrowUpDown, ArrowUp, ArrowDown, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
+import { QuickCreateTaskModal } from '@/components/tasks/QuickCreateTaskModal';
+import { InlineQuickAddTask } from '@/components/tasks/InlineQuickAddTask';
+import { BulkCreateTaskModal } from '@/components/tasks/BulkCreateTaskModal';
+import { ArrowUpDown, ArrowUp, ArrowDown, Plus, ChevronLeft, ChevronRight, Zap, Copy } from 'lucide-react';
 import { Loading } from '@/components/ui/loading';
 
 export default function ProjectTasksPage() {
@@ -47,8 +51,11 @@ export default function ProjectTasksPage() {
   const isAdminOrMaintainer = userRole === 'ADMIN' || userRole === 'MAINTAINER';
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isQuickCreateOpen, setIsQuickCreateOpen] = useState(false);
+  const [isBulkCreateOpen, setIsBulkCreateOpen] = useState(false);
+  const { lastValues, isLoaded: isLastValuesLoaded, save: saveLastValues } = useLastTaskValues(projectId);
 
-  const { data: tasksData, isLoading } = useTasks(orgId, projectId, {
+  const { data: tasksData, isLoading, refetch } = useTasks(orgId, projectId, {
     status: statusFilter !== 'all' ? statusFilter : undefined,
     sortBy,
     sortOrder,
@@ -136,18 +143,55 @@ export default function ProjectTasksPage() {
     <div className="container mx-auto py-8">
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
             <CardTitle>Tasks</CardTitle>
             {isAdminOrMaintainer && (
-              <Button onClick={() => setIsCreateDialogOpen(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                Create Task
-              </Button>
+              <div className="flex gap-2 flex-wrap">
+                <Button
+                  onClick={() => setIsQuickCreateOpen(true)}
+                  variant="default"
+                  size="sm"
+                >
+                  <Zap className="mr-2 h-4 w-4" />
+                  Quick Add
+                </Button>
+                <Button
+                  onClick={() => setIsBulkCreateOpen(true)}
+                  variant="secondary"
+                  size="sm"
+                >
+                  <Copy className="mr-2 h-4 w-4" />
+                  Bulk Create
+                </Button>
+                <Button
+                  onClick={() => setIsCreateDialogOpen(true)}
+                  variant="outline"
+                  size="sm"
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Full Create
+                </Button>
+              </div>
             )}
           </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
+            {isAdminOrMaintainer && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800 flex gap-2">
+                <div className="flex-1">
+                  <p className="font-medium">💡 Quick Tips:</p>
+                  <ul className="text-xs mt-1 space-y-1">
+                    <li>• <strong>Quick Add</strong> (⚡) for rapid single task entry with auto-remembered fields</li>
+                    <li>• <strong>Bulk Create</strong> (📋) to paste multiple task names and create them all at once</li>
+                    <li>• <strong>Full Create</strong> for detailed task info (deadline, description, etc.)</li>
+                    <li>• Fields you set are remembered for your next task!</li>
+                  </ul>
+                </div>
+              </div>
+            )}
+          </div>
+          <div className="space-y-4 mt-4">
             <div className="flex gap-2 items-center flex-wrap">
               <Input
                 placeholder="Search tasks..."
@@ -324,6 +368,16 @@ export default function ProjectTasksPage() {
                     )}
                   </div>
                 </div>
+
+                {isAdminOrMaintainer && (
+                  <div className="mt-6 pt-6 border-t">
+                    <InlineQuickAddTask
+                      orgId={orgId}
+                      projectId={projectId}
+                      onTaskCreated={() => refetch()}
+                    />
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -340,6 +394,32 @@ export default function ProjectTasksPage() {
           title: task.title || '',
         }))}
       />
+
+      {isLastValuesLoaded && (
+        <>
+          <QuickCreateTaskModal
+            open={isQuickCreateOpen}
+            onOpenChange={(open) => {
+              setIsQuickCreateOpen(open);
+              if (!open) refetch();
+            }}
+            orgId={orgId}
+            projectId={projectId}
+            lastValues={lastValues}
+          />
+
+          <BulkCreateTaskModal
+            open={isBulkCreateOpen}
+            onOpenChange={(open) => {
+              setIsBulkCreateOpen(open);
+              if (!open) refetch();
+            }}
+            orgId={orgId}
+            projectId={projectId}
+            lastValues={lastValues}
+          />
+        </>
+      )}
     </div>
   );
 }
