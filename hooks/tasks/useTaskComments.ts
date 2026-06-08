@@ -1,6 +1,14 @@
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/axios';
 
+export interface CommentAttachment {
+    id: string;
+    fileName: string;
+    fileSize: number;
+    mimeType: string;
+    publicUrl: string;
+}
+
 export interface TaskComment {
     id: string;
     taskId: string;
@@ -12,6 +20,7 @@ export interface TaskComment {
         email: string;
         name: string | null;
     };
+    attachments?: CommentAttachment[];
 }
 
 interface CommentsPage {

@@ -402,17 +402,36 @@ model TaskTag {
 }
 
 model TaskComment {
-  id        String   @id @default(uuid())
-  taskId    String   @map("task_id")
-  userId    String   @map("user_id")
-  content   String
-  createdAt DateTime @default(now()) @map("created_at")
+  id          String   @id @default(uuid())
+  taskId      String   @map("task_id")
+  userId      String   @map("user_id")
+  content     String
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
-  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task        Task                  @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user        User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  attachments CommentAttachment[]
 
   @@index([taskId])
+  @@index([userId])
   @@map("task_comments")
+}
+
+model CommentAttachment {
+  id           String   @id @default(uuid())
+  commentId    String   @map("comment_id")
+  fileName     String   @map("file_name")
+  fileSize     Int      @map("file_size")
+  mimeType     String   @map("mime_type")
+  minioPath    String   @map("minio_path")
+  publicUrl    String   @map("public_url")
+  uploadedAt   DateTime @default(now()) @map("uploaded_at")
+
+  comment      TaskComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@index([commentId])
+  @@map("comment_attachments")
 }
 
 model WorkLog {

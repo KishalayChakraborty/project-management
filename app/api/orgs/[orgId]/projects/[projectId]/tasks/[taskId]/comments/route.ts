@@ -4,7 +4,7 @@ import prisma from '@/lib/prisma';
 import { requireAuth, requireProjectAccess } from '@/lib/auth';
 
 const createCommentSchema = z.object({
-    content: z.string().min(1, 'Comment cannot be empty'),
+    content: z.string().default(''), // Allow empty for file-only messages
 });
 
 export async function GET(
@@ -40,6 +40,15 @@ export async function GET(
                         id: true,
                         email: true,
                         name: true,
+                    },
+                },
+                attachments: {
+                    select: {
+                        id: true,
+                        fileName: true,
+                        fileSize: true,
+                        mimeType: true,
+                        publicUrl: true,
                     },
                 },
             },
@@ -93,6 +102,15 @@ export async function POST(
                         id: true,
                         email: true,
                         name: true,
+                    },
+                },
+                attachments: {
+                    select: {
+                        id: true,
+                        fileName: true,
+                        fileSize: true,
+                        mimeType: true,
+                        publicUrl: true,
                     },
                 },
             },

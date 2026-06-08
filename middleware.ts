@@ -18,15 +18,18 @@ export default withAuth(
     callbacks: {
       authorized: ({ token, req }) => {
         const path = req.nextUrl.pathname;
-        
-        if (path.startsWith('/api/auth')) {
+
+        // Public API routes (no auth required)
+        if (path.startsWith('/api/auth') || path.startsWith('/api/files')) {
           return true;
         }
 
+        // Auth pages (require no token)
         if (path.startsWith('/signin') || path.startsWith('/signup') || path.startsWith('/forgot-password')) {
           return !token;
         }
 
+        // All other routes require token
         return !!token;
       },
     },

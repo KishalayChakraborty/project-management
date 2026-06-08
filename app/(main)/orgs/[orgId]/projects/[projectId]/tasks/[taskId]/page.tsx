@@ -12,11 +12,6 @@ import {
   useRemoveTaskDependency,
   type TaskDetail,
 } from "@/hooks/tasks/useTasks";
-import {
-  useTaskComments,
-  useAddTaskComment,
-  useDeleteTaskComment,
-} from "@/hooks/tasks/useTaskComments";
 import { useUserRole } from "@/hooks/organization";
 import { useProjectTeamMembers } from "@/hooks/organization";
 import { useSession } from "next-auth/react";
@@ -38,6 +33,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { EditTaskDialog } from "@/components/tasks/EditTaskDialog";
+import { TaskCommentSection } from "@/components/tasks/TaskCommentSection";
 import { ArrowLeft, Pencil, Link2, X, Send, Trash2, Loader2 } from "lucide-react";
 
 function formatDuration(minutes: number) {
@@ -121,8 +117,6 @@ export default function TaskDetailPage() {
 
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [blockedByTaskId, setBlockedByTaskId] = useState<string>("");
-  const [commentText, setCommentText] = useState("");
-  const [chatSearch, setChatSearch] = useState("");
 
   const { data: task, isLoading } = useTask(orgId, projectId, taskId);
   const { data: userRole, isLoading: roleLoading } = useUserRole(orgId);
@@ -132,19 +126,9 @@ export default function TaskDetailPage() {
   const updateReviewer = useUpdateTaskReviewer(orgId, projectId, taskId);
   const addDependency = useAddTaskDependency(orgId, projectId, taskId);
   const removeDependency = useRemoveTaskDependency(orgId, projectId, taskId);
-  const {
-    data: commentsData,
-    isLoading: commentsLoading,
-    hasNextPage,
-    fetchNextPage,
-    isFetchingNextPage,
-  } = useTaskComments(orgId, projectId, taskId);
-  const addComment = useAddTaskComment(orgId, projectId, taskId);
-  const deleteComment = useDeleteTaskComment(orgId, projectId, taskId);
   const { data: session } = useSession();
 
   const members = teamMembersData?.members ?? [];
-  const allComments = commentsData?.pages.flatMap((p) => p.comments) ?? [];
 
   useEffect(() => {
     if (roleLoading || userRole === undefined) return;
@@ -488,108 +472,14 @@ export default function TaskDetailPage() {
       <Card className="w-[450px] shrink-0 sticky top-4 flex flex-col h-[60vh]">
         <CardHeader className="shrink-0 pb-3">
           <CardTitle>Comments</CardTitle>
-          <Input
-            placeholder="Search comments..."
-            value={chatSearch}
-            onChange={(e) => setChatSearch(e.target.value)}
-            className="h-8 text-sm mt-2"
-          />
         </CardHeader>
-        <CardContent className="flex flex-col gap-4 overflow-hidden flex-1">
-          <form
-            className="flex gap-2 shrink-0"
-            onSubmit={(e) => {
-              e.preventDefault();
-              const trimmed = commentText.trim();
-              if (!trimmed) return;
-              addComment.mutate(trimmed, {
-                onSuccess: () => setCommentText(""),
-              });
-            }}
-          >
-            <Input
-              placeholder="Write a comment..."
-              value={commentText}
-              onChange={(e) => setCommentText(e.target.value)}
-              disabled={addComment.isPending}
-            />
-            <Button
-              type="submit"
-              size="sm"
-              disabled={!commentText.trim() || addComment.isPending}
-            >
-              <Send className="h-4 w-4" />
-            </Button>
-          </form>
-
-          <div className="overflow-y-auto flex-1 pr-2">
-            {commentsLoading ? (
-              <p className="text-sm text-muted-foreground">
-                Loading comments...
-              </p>
-            ) : !allComments || allComments.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No comments yet.</p>
-            ) : (
-              <ul className="space-y-3">
-                {allComments
-                  .filter((c) =>
-                    c.content.toLowerCase().includes(chatSearch.toLowerCase()),
-                  )
-                  .map((c) => {
-                    const name = c.user.name || c.user.email;
-                    return (
-                      <li
-                        key={c.id}
-                        className="border rounded-md p-3 space-y-2"
-                      >
-                        <div className="flex justify-between items-start">
-                          <div className="flex gap-2">
-                            <div
-                              className={`flex items-center justify-center shrink-0 w-6 h-6 rounded-full text-[10px] font-medium text-white ${getColorClass(name)}`}
-                              title={name}
-                            >
-                              {getInitials(name)}
-                            </div>
-                            <div className="flex flex-col min-w-0">
-                              <p className="text-sm text-foreground">
-                                <Linkify text={c.content} />
-                              </p>
-                              <p className="text-[10px] text-muted-foreground mt-1">
-                                {new Date(c.createdAt).toLocaleString()}
-                              </p>
-                            </div>
-                          </div>
-                          {(c.userId === session?.user?.id ||
-                            userRole === "ADMIN" ||
-                            userRole === "MAINTAINER") && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 w-6 p-0 shrink-0 ml-2"
-                              onClick={() => deleteComment.mutate(c.id)}
-                              disabled={deleteComment.isPending}
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          )}
-                        </div>
-                      </li>
-                    );
-                  })}
-              </ul>
-            )}
-            {hasNextPage && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-full mt-2"
-                onClick={() => fetchNextPage()}
-                disabled={isFetchingNextPage}
-              >
-                {isFetchingNextPage ? "Loading..." : "Load more"}
-              </Button>
-            )}
-          </div>
+        <CardContent className="flex flex-col gap-0 overflow-hidden flex-1">
+          <TaskCommentSection
+            orgId={orgId}
+            projectId={projectId}
+            taskId={taskId}
+            userRole={userRole}
+          />
         </CardContent>
       </Card>
     </div>

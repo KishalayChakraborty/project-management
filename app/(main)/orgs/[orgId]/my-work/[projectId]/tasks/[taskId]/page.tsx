@@ -5,7 +5,7 @@ import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { useTask, useUpdateTask, type TaskDetail } from '@/hooks/tasks/useTasks';
-import { useTaskComments, useAddTaskComment, useDeleteTaskComment } from '@/hooks/tasks/useTaskComments';
+import { TaskCommentSection } from '@/components/tasks/TaskCommentSection';
 import { useActiveWorkSession, useStartWorkSession, usePauseWorkSession, useResumeWorkSession, useStopWorkSession } from '@/hooks/work-logs/useWorkSessions';
 import { useOpenFloatingComment } from '@/hooks/useOpenFloatingComment';
 import { WorkSessionWidget } from '@/components/work-logs/WorkSessionWidget';
@@ -51,30 +51,6 @@ function getColorClass(text: string) {
   return colors[Math.abs(hash) % colors.length];
 }
 
-const Linkify = ({ text }: { text: string }) => {
-  const urlRegex = /(https?:\/\/[^\s]+)/g;
-  const parts = text.split(urlRegex);
-  return (
-    <span className="whitespace-pre-wrap flex-1 break-words">
-      {parts.map((part, i) => {
-        if (part.match(urlRegex)) {
-          return (
-            <a
-              key={i}
-              href={part}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-500 hover:underline"
-            >
-              {part}
-            </a>
-          );
-        }
-        return part;
-      })}
-    </span>
-  );
-};
 
 export default function MemberTaskDetailPage() {
   const params = useParams();
@@ -94,16 +70,10 @@ export default function MemberTaskDetailPage() {
         : 'Back to my tasks';
   const { data: session } = useSession();
 
-  const [commentText, setCommentText] = useState('');
-  const [chatSearch, setChatSearch] = useState('');
   const { openComment } = useOpenFloatingComment();
 
   const { data: task, isLoading } = useTask(orgId, projectId, taskId);
   const updateTask = useUpdateTask(orgId, projectId, taskId);
-  const { data: commentsData, isLoading: commentsLoading, hasNextPage, fetchNextPage, isFetchingNextPage } = useTaskComments(orgId, projectId, taskId);
-  const addComment = useAddTaskComment(orgId, projectId, taskId);
-  const deleteComment = useDeleteTaskComment(orgId, projectId, taskId);
-  const allComments = commentsData?.pages.flatMap((p) => p.comments) ?? [];
 
   const { data: workSessionData } = useActiveWorkSession(orgId, projectId);
   const startSession = useStartWorkSession(orgId, projectId);
@@ -411,102 +381,14 @@ export default function MemberTaskDetailPage() {
         <Card className="flex flex-col flex-1 min-h-0">
           <CardHeader className="shrink-0 pb-3">
             <CardTitle>Comments</CardTitle>
-            <Input
-              placeholder="Search comments..."
-              value={chatSearch}
-              onChange={(e) => setChatSearch(e.target.value)}
-              className="h-8 text-sm mt-2"
-            />
           </CardHeader>
-        <CardContent className="flex flex-col gap-4 overflow-hidden flex-1">
-          <form
-            className="flex gap-2 shrink-0"
-            onSubmit={(e) => {
-              e.preventDefault();
-              const trimmed = commentText.trim();
-              if (!trimmed) return;
-              addComment.mutate(trimmed, {
-                onSuccess: () => setCommentText(''),
-              });
-            }}
-          >
-            <Input
-              placeholder="Write a comment..."
-              value={commentText}
-              onChange={(e) => setCommentText(e.target.value)}
-              disabled={addComment.isPending}
+          <CardContent className="flex flex-col gap-0 overflow-hidden flex-1">
+            <TaskCommentSection
+              orgId={orgId}
+              projectId={projectId}
+              taskId={taskId}
             />
-            <Button
-              type="submit"
-              size="sm"
-              disabled={!commentText.trim() || addComment.isPending}
-            >
-              <Send className="h-4 w-4" />
-            </Button>
-          </form>
-
-          <div className="overflow-y-auto flex-1 pr-2">
-            {commentsLoading ? (
-              <p className="text-sm text-muted-foreground">Loading comments...</p>
-            ) : !allComments || allComments.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No comments yet.</p>
-            ) : (
-              <ul className="space-y-3">
-                {allComments
-                  .filter((c) =>
-                    c.content.toLowerCase().includes(chatSearch.toLowerCase()),
-                  )
-                  .map((c) => {
-                    const name = c.user.name || c.user.email;
-                    return (
-                      <li key={c.id} className="border rounded-md p-3 space-y-2">
-                        <div className="flex justify-between items-start">
-                          <div className="flex gap-2">
-                            <div
-                              className={`flex items-center justify-center shrink-0 w-6 h-6 rounded-full text-[10px] font-medium text-white ${getColorClass(name)}`}
-                              title={name}
-                            >
-                              {getInitials(name)}
-                            </div>
-                            <div className="flex flex-col min-w-0">
-                              <p className="text-sm text-foreground">
-                                <Linkify text={c.content} />
-                              </p>
-                              <p className="text-[10px] text-muted-foreground mt-1">
-                                {new Date(c.createdAt).toLocaleString()}
-                              </p>
-                            </div>
-                          </div>
-                          {c.userId === session?.user?.id && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 w-6 p-0 shrink-0 ml-2"
-                              onClick={() => deleteComment.mutate(c.id)}
-                              disabled={deleteComment.isPending}
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          )}
-                        </div>
-                      </li>
-                    );
-                  })}
-              </ul>
-            )}
-            {hasNextPage && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-full mt-2"
-                onClick={() => fetchNextPage()}
-                disabled={isFetchingNextPage}
-              >
-                {isFetchingNextPage ? 'Loading...' : 'Load more'}
-              </Button>
-            )}
-          </div>
-        </CardContent>
+          </CardContent>
         </Card>
       </div>
     </div>
