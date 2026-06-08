@@ -43,10 +43,12 @@ export function MessageComposer({
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   ];
 
-  const handleFileSelect = (files: FileList | null) => {
+  const handleFileSelect = (files: FileList | File[] | null) => {
     if (!files) return;
 
-    const newFiles = Array.from(files).filter((file) => {
+    const fileArray = Array.isArray(files) ? files : Array.from(files);
+    const newFiles = fileArray.filter((file) => {
+      if (!file || !file.size) return false;
       if (file.size > 10 * 1024 * 1024) {
         alert(`${file.name} is too large (max 10MB)`);
         return false;
@@ -142,10 +144,7 @@ export function MessageComposer({
     if (files.length > 0) {
       e.preventDefault();
       console.log('📎 Processing', files.length, 'pasted files');
-      handleFileSelect({
-        length: files.length,
-        item: (i: number) => files[i],
-      } as FileList);
+      handleFileSelect(files);
     }
   };
 
