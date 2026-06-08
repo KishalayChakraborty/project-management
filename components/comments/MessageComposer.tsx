@@ -27,8 +27,10 @@ export function MessageComposer({
   const [text, setText] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const allowedTypes = [
     'image/jpeg',
@@ -74,24 +76,72 @@ export function MessageComposer({
     setSelectedFiles([...selectedFiles, ...newFiles]);
   };
 
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.currentTarget === containerRef.current) {
+      setIsDragging(false);
+    }
+  };
+
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    setIsDragging(false);
     handleFileSelect(e.dataTransfer.files);
   };
 
   const handlePaste = (e: React.ClipboardEvent) => {
-    const items = e.clipboardData.items;
+    const items = e.clipboardData?.items;
+    if (!items || items.length === 0) return;
+
     const files: File[] = [];
 
     for (let i = 0; i < items.length; i++) {
-      if (items[i].kind === 'file') {
-        const file = items[i].getAsFile();
-        if (file) files.push(file);
+      const item = items[i];
+
+      try {
+        // Handle file type clipboard items (most common for screenshots and pastes)
+        if (item.kind === 'file') {
+          const file = item.getAsFile();
+          if (file && file.size > 0) {
+            // Auto-rename if no name provided
+            const fileName = file.name || `pasted-image-${Date.now()}.png`;
+            const renamedFile = new File([file], fileName, { type: file.type });
+            files.push(renamedFile);
+            console.log('✅ Pasted file:', fileName, file.type);
+          }
+        }
+        // Handle direct image MIME types from clipboard
+        else if (item.type.startsWith('image/')) {
+          const file = item.getAsFile();
+          if (file && file.size > 0) {
+            const ext = item.type === 'image/png' ? 'png' : item.type === 'image/jpeg' ? 'jpg' : 'png';
+            const fileName = `pasted-image-${Date.now()}.${ext}`;
+            const renamedFile = new File([file], fileName, { type: item.type });
+            files.push(renamedFile);
+            console.log('✅ Pasted image:', fileName, item.type);
+          }
+        }
+      } catch (err) {
+        console.error('Error processing clipboard item:', err);
       }
     }
 
     if (files.length > 0) {
+      e.preventDefault();
+      console.log('📎 Processing', files.length, 'pasted files');
       handleFileSelect({
         length: files.length,
         item: (i: number) => files[i],
@@ -134,7 +184,28 @@ export function MessageComposer({
   };
 
   return (
-    <div className="flex flex-col gap-3 border-t pt-3">
+    <div
+      ref={containerRef}
+      className={`flex flex-col gap-3 border-t pt-3 transition-colors relative ${
+        isDragging ? 'bg-blue-50 dark:bg-blue-950/20' : ''
+      }`}
+      onDragEnter={handleDragEnter}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {/* Drag Over Indicator */}
+      {isDragging && (
+        <div className="absolute inset-0 border-2 border-dashed border-blue-500 rounded pointer-events-none flex items-center justify-center bg-blue-50/50 dark:bg-blue-950/10 z-10">
+          <div className="flex flex-col items-center gap-2">
+            <ImageIcon className="h-8 w-8 text-blue-500" />
+            <span className="text-sm font-medium text-blue-600 dark:text-blue-400">
+              Drop files here
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Image Previews */}
       {imagePreviews.length > 0 && (
         <div className="flex gap-2 flex-wrap">
@@ -213,14 +284,12 @@ export function MessageComposer({
         </div>
 
         {/* Text Input */}
-        <div className="flex-1 min-h-9">
+        <div className={`flex-1 min-h-9 ${isDragging ? 'opacity-50' : ''}`}>
           <Textarea
             ref={textareaRef}
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={handleKeyDown}
-            onDrop={handleDrop}
-            onDragOver={(e) => e.preventDefault()}
             onPaste={handlePaste}
             placeholder={placeholder}
             disabled={isLoading}

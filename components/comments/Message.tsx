@@ -17,6 +17,8 @@ interface MessageProps {
   canDelete: boolean;
   onDelete?: () => void;
   isDeleting?: boolean;
+  showAuthor?: boolean;
+  showDateSeparator?: boolean;
 }
 
 export function Message({
@@ -30,6 +32,8 @@ export function Message({
   canDelete,
   onDelete,
   isDeleting = false,
+  showAuthor = true,
+  showDateSeparator = false,
 }: MessageProps) {
   const [selectedGalleryIndex, setSelectedGalleryIndex] = useState<number | null>(
     null
@@ -46,31 +50,64 @@ export function Message({
     return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
   };
 
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString([], {
+      month: 'short',
+      day: 'numeric',
+      year: date.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined,
+    });
+  };
+
   return (
     <>
-      <div className="flex gap-2 mb-4 group">
-        {/* Avatar */}
-        <div
-          className={`flex items-center justify-center shrink-0 w-8 h-8 rounded-full text-white text-xs font-bold ${authorColor}`}
-          title={authorName}
-        >
-          {authorInitials}
+      {showDateSeparator && (
+        <div className="flex items-center gap-3 my-3 first:mt-0">
+          <div className="flex-1 h-px bg-muted" />
+          <span className="text-xs text-muted-foreground">{formatDate(timestamp)}</span>
+          <div className="flex-1 h-px bg-muted" />
         </div>
+      )}
+
+      <div className={`flex gap-2 group ${showAuthor ? 'mb-4' : 'mb-1'}`}>
+        {/* Avatar */}
+        {showAuthor ? (
+          <div
+            className={`flex items-center justify-center shrink-0 w-8 h-8 rounded-full text-white text-xs font-bold ${authorColor}`}
+            title={authorName}
+          >
+            {authorInitials}
+          </div>
+        ) : (
+          <div className="w-8 h-8 shrink-0" />
+        )}
 
         {/* Message content */}
         <div className="flex-1 min-w-0">
           {/* Author and time */}
-          <div className="flex items-baseline gap-2">
-            <span className="text-sm font-semibold text-foreground">
-              {authorName}
-            </span>
+          {showAuthor && (
+            <div className="flex items-baseline gap-2">
+              <span className="text-sm font-semibold text-foreground">
+                {authorName}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {timestamp.toLocaleString([], {
+                  month: 'short',
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              </span>
+            </div>
+          )}
+
+          {!showAuthor && (
             <span className="text-xs text-muted-foreground">
               {timestamp.toLocaleTimeString([], {
                 hour: '2-digit',
                 minute: '2-digit',
               })}
             </span>
-          </div>
+          )}
 
           {/* Message text */}
           {text && (

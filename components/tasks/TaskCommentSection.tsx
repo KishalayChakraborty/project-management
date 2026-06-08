@@ -123,6 +123,26 @@ export function TaskCommentSection({
     c.content.toLowerCase().includes(chatSearch.toLowerCase())
   );
 
+  const reversedComments = [...filteredComments].reverse();
+
+  // Group comments by user and date for rendering
+  const groupedComments = reversedComments.map((comment, idx) => {
+    const prevComment = idx > 0 ? reversedComments[idx - 1] : null;
+    const prevDate = prevComment
+      ? new Date(prevComment.createdAt).toDateString()
+      : null;
+    const currDate = new Date(comment.createdAt).toDateString();
+
+    const isSameUser = prevComment?.userId === comment.userId;
+    const isDifferentDate = prevDate !== currDate;
+
+    return {
+      comment,
+      showAuthor: !isSameUser,
+      showDateSeparator: isDifferentDate,
+    };
+  });
+
   return (
     <div className="flex flex-col gap-0 h-full overflow-hidden">
       {/* Search Bar */}
@@ -159,7 +179,7 @@ export function TaskCommentSection({
               </button>
             )}
 
-            {filteredComments.map((comment) => {
+            {groupedComments.map(({ comment, showAuthor, showDateSeparator }) => {
               const name = comment.user.name || comment.user.email;
               return (
                 <Message
@@ -174,6 +194,8 @@ export function TaskCommentSection({
                   canDelete={canDelete(comment.userId)}
                   onDelete={() => deleteComment.mutate(comment.id)}
                   isDeleting={deleteComment.isPending}
+                  showAuthor={showAuthor}
+                  showDateSeparator={showDateSeparator}
                 />
               );
             })}

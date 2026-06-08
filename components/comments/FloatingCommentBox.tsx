@@ -147,6 +147,26 @@ export function FloatingCommentBox({
     c.content.toLowerCase().includes(chatSearch.toLowerCase())
   );
 
+  const reversedComments = [...filteredComments].reverse();
+
+  // Group comments by user and date
+  const groupedComments = reversedComments.map((comment, idx) => {
+    const prevComment = idx > 0 ? reversedComments[idx - 1] : null;
+    const prevDate = prevComment
+      ? new Date(prevComment.createdAt).toDateString()
+      : null;
+    const currDate = new Date(comment.createdAt).toDateString();
+
+    const isSameUser = prevComment?.userId === comment.userId;
+    const isDifferentDate = prevDate !== currDate;
+
+    return {
+      comment,
+      showAuthor: !isSameUser,
+      showDateSeparator: isDifferentDate,
+    };
+  });
+
   return (
     <div
       style={{
@@ -220,7 +240,7 @@ export function FloatingCommentBox({
                     </button>
                   )}
 
-                  {filteredComments.map((comment) => {
+                  {groupedComments.map(({ comment, showAuthor, showDateSeparator }) => {
                     const name = comment.user.name || comment.user.email;
                     return (
                       <Message
@@ -235,6 +255,8 @@ export function FloatingCommentBox({
                         canDelete={comment.userId === session?.user?.id}
                         onDelete={() => deleteComment.mutate(comment.id)}
                         isDeleting={deleteComment.isPending}
+                        showAuthor={showAuthor}
+                        showDateSeparator={showDateSeparator}
                       />
                     );
                   })}
