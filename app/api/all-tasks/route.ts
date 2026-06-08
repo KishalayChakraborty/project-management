@@ -103,6 +103,12 @@ export async function GET(request: Request) {
                             name: true,
                         },
                     },
+                    parent: {
+                        select: {
+                            id: true,
+                            title: true,
+                        },
+                    },
                 },
                 orderBy,
                 skip,

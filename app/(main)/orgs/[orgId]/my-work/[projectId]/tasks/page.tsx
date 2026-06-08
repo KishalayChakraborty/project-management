@@ -25,8 +25,9 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { ArrowUpDown, ArrowUp, ArrowDown, CheckSquare, Play, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowUpDown, ArrowUp, ArrowDown, CheckSquare, Play, ChevronLeft, ChevronRight, GitBranch } from 'lucide-react';
 import { Loading } from '@/components/ui/loading';
+import { QuickAddSubtaskModal } from '@/components/tasks/QuickAddSubtaskModal';
 
 const now = new Date();
 const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
@@ -46,10 +47,12 @@ function TaskActions({
   orgId,
   projectId,
   task,
+  onAddSubtask,
 }: {
   orgId: string;
   projectId: string;
   task: Task;
+  onAddSubtask: (task: Task) => void;
 }) {
   const updateTask = useUpdateTask(orgId, projectId, task.id);
   const canUpdate =
@@ -59,6 +62,15 @@ function TaskActions({
 
   return (
     <div className="flex gap-1">
+      <Button
+        size="sm"
+        variant="ghost"
+        onClick={() => onAddSubtask(task)}
+        title="Add subtask"
+      >
+        <GitBranch className="h-4 w-4 mr-1" />
+        Subtask
+      </Button>
       {task.status !== 'IN_PROGRESS' && task.status !== 'REVIEW' && (
         <Button
           size="sm"
@@ -97,6 +109,8 @@ export default function MemberTasksPage() {
   const [deadlineFilter, setDeadlineFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'priority' | 'deadline' | 'created'>('created');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [subtaskData, setSubtaskData] = useState<{ task: Task; orgId: string; projectId: string } | null>(null);
+  const [subtaskModalOpen, setSubtaskModalOpen] = useState(false);
 
   const { data: tasksData, isLoading } = useTasks(orgId, projectId, {
     assigneeId: userId ?? undefined,
@@ -111,7 +125,7 @@ export default function MemberTasksPage() {
   const currentPage = tasksData?.page ?? 1;
 
   // Client-side filtering for search, status, deadline
-  const filteredTasks = tasks.filter((task) => {
+  const allFilteredTasks = tasks.filter((task) => {
     if (debouncedSearch) {
       const q = debouncedSearch.toLowerCase();
       if (
@@ -137,6 +151,18 @@ export default function MemberTasksPage() {
     }
     return true;
   });
+
+  // Separate parent and child tasks
+  const parentTasks = allFilteredTasks.filter((t) => !t.parentId);
+  const childTasksByParent = new Map<string, Task[]>();
+  allFilteredTasks.filter((t) => t.parentId).forEach((t) => {
+    if (!childTasksByParent.has(t.parentId!)) {
+      childTasksByParent.set(t.parentId!, []);
+    }
+    childTasksByParent.get(t.parentId!)!.push(t);
+  });
+
+  const filteredTasks = parentTasks;
 
   useEffect(() => {
     setPage(1);
@@ -280,37 +306,88 @@ export default function MemberTasksPage() {
                     </TableHeader>
                     <TableBody>
                       {filteredTasks.map((task) => (
-                        <TableRow key={task.id}>
-                          <TableCell>
-                            <Badge variant={getPriorityColor(task.priority)}>
-                              {task.priority}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="font-medium">
-                            <Link
-                              href={`/orgs/${orgId}/my-work/${projectId}/tasks/${task.id}`}
-                              className="text-primary hover:underline"
-                            >
-                              {task.title}
-                            </Link>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={getStatusColor(task.status)}>
-                              {task.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            {task.deadlineDt
-                              ? new Date(task.deadlineDt).toLocaleDateString()
-                              : '—'}
-                          </TableCell>
-                          <TableCell>
-                            {new Date(task.createdAt).toLocaleDateString()}
-                          </TableCell>
-                          <TableCell>
-                            <TaskActions orgId={orgId} projectId={projectId} task={task} />
-                          </TableCell>
-                        </TableRow>
+                        <>
+                          <TableRow key={task.id}>
+                            <TableCell>
+                              <Badge variant={getPriorityColor(task.priority)}>
+                                {task.priority}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="font-medium">
+                              <Link
+                                href={`/orgs/${orgId}/my-work/${projectId}/tasks/${task.id}`}
+                                className="text-primary hover:underline"
+                              >
+                                {task.title}
+                              </Link>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={getStatusColor(task.status)}>
+                                {task.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              {task.deadlineDt
+                                ? new Date(task.deadlineDt).toLocaleDateString()
+                                : '—'}
+                            </TableCell>
+                            <TableCell>
+                              {new Date(task.createdAt).toLocaleDateString()}
+                            </TableCell>
+                            <TableCell>
+                              <TaskActions
+                                orgId={orgId}
+                                projectId={projectId}
+                                task={task}
+                                onAddSubtask={(t) => {
+                                  setSubtaskData({ task: t, orgId, projectId });
+                                  setSubtaskModalOpen(true);
+                                }}
+                              />
+                            </TableCell>
+                          </TableRow>
+                          {(childTasksByParent.get(task.id) || []).map((subtask) => (
+                            <TableRow key={subtask.id} className="bg-amber-50/60 border-l-4 border-l-amber-400 hover:bg-amber-100/40">
+                              <TableCell className="pl-12">
+                                <Badge variant={getPriorityColor(subtask.priority)}>
+                                  {subtask.priority}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="font-medium text-sm">
+                                <Link
+                                  href={`/orgs/${orgId}/my-work/${projectId}/tasks/${subtask.id}`}
+                                  className="text-primary hover:underline"
+                                >
+                                  ↳ {subtask.title}
+                                </Link>
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant={getStatusColor(subtask.status)}>
+                                  {subtask.status}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                {subtask.deadlineDt
+                                  ? new Date(subtask.deadlineDt).toLocaleDateString()
+                                  : '—'}
+                              </TableCell>
+                              <TableCell>
+                                {new Date(subtask.createdAt).toLocaleDateString()}
+                              </TableCell>
+                              <TableCell>
+                                <TaskActions
+                                  orgId={orgId}
+                                  projectId={projectId}
+                                  task={subtask}
+                                  onAddSubtask={(t) => {
+                                    setSubtaskData({ task: t, orgId, projectId });
+                                    setSubtaskModalOpen(true);
+                                  }}
+                                />
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </>
                       ))}
                     </TableBody>
                   </Table>
@@ -350,6 +427,25 @@ export default function MemberTasksPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Quick Add Subtask Modal */}
+      {subtaskData && (
+        <QuickAddSubtaskModal
+          open={subtaskModalOpen}
+          onOpenChange={(o) => {
+            if (!o) {
+              setSubtaskModalOpen(false);
+              setSubtaskData(null);
+            } else {
+              setSubtaskModalOpen(o);
+            }
+          }}
+          orgId={subtaskData.orgId}
+          projectId={subtaskData.projectId}
+          parentTaskId={subtaskData.task.id}
+          parentTaskTitle={subtaskData.task.title}
+        />
+      )}
     </div>
   );
 }

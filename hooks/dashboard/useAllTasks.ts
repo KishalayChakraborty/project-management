@@ -39,6 +39,10 @@ export interface AllTask {
         email: string;
         name?: string | null;
     };
+    parent?: {
+        id: string;
+        title: string;
+    } | null;
 }
 
 export interface AllTasksResponse {

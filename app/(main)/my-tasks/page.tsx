@@ -8,6 +8,7 @@ import { useMyTasks, type MyTask, type MyTasksOrg } from '@/hooks/dashboard/useM
 import { useDebounce } from '@/hooks/useDebounce';
 import { AddTaskFlow } from '@/components/tasks/AddTaskFlow';
 import { EditTaskDialog } from '@/components/tasks/EditTaskDialog';
+import { QuickAddSubtaskModal } from '@/components/tasks/QuickAddSubtaskModal';
 import { usePriorityTaskList } from '@/hooks/usePriorityTaskList';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -45,6 +46,7 @@ import {
   Pause,
   Square,
   Clock,
+  GitBranch,
 } from 'lucide-react';
 import type { Task } from '@/hooks/tasks/useTasks';
 import { useActiveWorkSession, useStartWorkSession, usePauseWorkSession, useResumeWorkSession, useStopWorkSession } from '@/hooks/work-logs/useWorkSessions';
@@ -195,14 +197,58 @@ function PrioritySelect({
   );
 }
 
+// ─── task with subtasks ───────────────────────────────────────────────────────
+
+function TaskWithSubtasks({
+  task, subtasks, orgId, role, projectId, onEdit, onOpen, onUpdated, onAddPriority, onAddSubtask, compact = false,
+}: {
+  task: MyTask; subtasks: MyTask[]; orgId: string; role: string; projectId: string;
+  onEdit: () => void; onOpen: () => void; onUpdated: () => void; onAddPriority: () => void; onAddSubtask: () => void;
+  compact?: boolean;
+}) {
+  return (
+    <>
+      <TaskRow
+        task={task}
+        orgId={orgId}
+        role={role}
+        projectId={projectId}
+        onEdit={onEdit}
+        onOpen={onOpen}
+        onUpdated={onUpdated}
+        onAddPriority={onAddPriority}
+        onAddSubtask={onAddSubtask}
+        compact={compact}
+      />
+      {subtasks.map((subtask) => (
+        <div key={subtask.id} className="pl-8 border-l-4 border-l-amber-400 bg-amber-50/40 rounded-r-md hover:bg-amber-100/30 transition-colors">
+          <TaskRow
+            task={subtask}
+            orgId={orgId}
+            role={role}
+            projectId={projectId}
+            onEdit={() => onEdit()}
+            onOpen={() => onOpen()}
+            onUpdated={onUpdated}
+            onAddPriority={() => onAddPriority()}
+            onAddSubtask={() => onAddSubtask()}
+            compact={compact}
+            isSubtask
+          />
+        </div>
+      ))}
+    </>
+  );
+}
+
 // ─── task row ────────────────────────────────────────────────────────────────
 
 function TaskRow({
-  task, orgId, role, projectId, onEdit, onOpen, onUpdated, onAddPriority, compact = false,
+  task, orgId, role, projectId, onEdit, onOpen, onUpdated, onAddPriority, onAddSubtask, compact = false, isSubtask = false,
 }: {
   task: MyTask; orgId: string; role: string; projectId: string;
-  onEdit: () => void; onOpen: () => void; onUpdated: () => void; onAddPriority: () => void;
-  compact?: boolean;
+  onEdit: () => void; onOpen: () => void; onUpdated: () => void; onAddPriority: () => void; onAddSubtask: () => void;
+  compact?: boolean; isSubtask?: boolean;
 }) {
   const overdue = isOverdue(task.deadlineDt) && !['DONE', 'ARCHIVED'].includes(task.status);
   const daysLeft = getDaysUntilDeadline(task.deadlineDt);
@@ -438,6 +484,19 @@ function TaskRow({
               variant="ghost"
               size="icon"
               className="h-6 w-6"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onAddSubtask(); }}
+            >
+              <GitBranch className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Add subtask</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); onAddPriority(); }}
             >
               <Star className={`h-3.5 w-3.5 ${hasTask(task.id) ? 'fill-yellow-500 text-yellow-500' : 'text-muted-foreground hover:text-yellow-500'}`} />
@@ -469,7 +528,7 @@ function TaskRow({
 // ─── project group ────────────────────────────────────────────────────────────
 
 function ProjectGroup({
-  entry, orgId, role, router, onEdit, onUpdated, searchQ, statusFilter, onAddTask, onAddPriority, sortBy, compact,
+  entry, orgId, role, router, onEdit, onUpdated, searchQ, statusFilter, onAddTask, onAddPriority, onAddSubtask, sortBy, compact,
 }: {
   entry: MyTasksOrg['projects'][0];
   orgId: string; role: string;
@@ -479,6 +538,7 @@ function ProjectGroup({
   searchQ: string; statusFilter: string;
   onAddTask: (orgId: string, projectId: string) => void;
   onAddPriority: (task: MyTask, orgId: string) => void;
+  onAddSubtask: (task: MyTask, orgId: string, projectId: string) => void;
   sortBy: 'deadline' | 'priority' | 'status' | 'created';
   compact?: boolean;
 }) {
@@ -505,17 +565,27 @@ function ProjectGroup({
       return true;
     });
 
-  // Separate active and done tasks
-  const activeTasks = allFiltered.filter((t) => !['DONE', 'ARCHIVED'].includes(t.status));
-  const doneTasks = allFiltered.filter((t) => ['DONE', 'ARCHIVED'].includes(t.status));
+  // Separate parent and child tasks
+  const parentTasks = allFiltered.filter((t) => !t.parentId);
+  const childTasksByParent = new Map<string, MyTask[]>();
+  allFiltered.filter((t) => t.parentId).forEach((t) => {
+    if (!childTasksByParent.has(t.parentId!)) {
+      childTasksByParent.set(t.parentId!, []);
+    }
+    childTasksByParent.get(t.parentId!)!.push(t);
+  });
+
+  // Separate active and done parent tasks
+  const activeParents = parentTasks.filter((t) => !['DONE', 'ARCHIVED'].includes(t.status));
+  const doneParents = parentTasks.filter((t) => ['DONE', 'ARCHIVED'].includes(t.status));
 
   // Sort each group
-  const filtered = [
-    ...activeTasks.sort((a, b) => getSortValue(a) - getSortValue(b)),
-    ...doneTasks.sort((a, b) => getSortValue(a) - getSortValue(b)),
+  const sortedParents = [
+    ...activeParents.sort((a, b) => getSortValue(a) - getSortValue(b)),
+    ...doneParents.sort((a, b) => getSortValue(a) - getSortValue(b)),
   ];
 
-  const active = filtered.filter((t) => !['DONE', 'ARCHIVED'].includes(t.status)).length;
+  const active = sortedParents.filter((t) => !['DONE', 'ARCHIVED'].includes(t.status)).length;
 
   return (
     <div className="border rounded-lg overflow-hidden">
@@ -542,16 +612,17 @@ function ProjectGroup({
       </button>
       {open && (
         <div className="divide-y">
-          {filtered.length === 0 ? (
+          {sortedParents.length === 0 ? (
             <div className="px-3 py-3 text-xs text-muted-foreground text-center">
               No matching tasks.{' '}
               <button className="underline" onClick={() => onAddTask(orgId, entry.project.id)}>Add one?</button>
             </div>
           ) : (
-            filtered.map((task) => (
-              <TaskRow
+            sortedParents.map((task) => (
+              <TaskWithSubtasks
                 key={task.id}
                 task={task}
+                subtasks={childTasksByParent.get(task.id) || []}
                 orgId={orgId}
                 projectId={entry.project.id}
                 role={role}
@@ -559,6 +630,7 @@ function ProjectGroup({
                 onOpen={() => router.push(getTaskRoute(task, orgId, role))}
                 onUpdated={onUpdated}
                 onAddPriority={() => onAddPriority(task, orgId)}
+                onAddSubtask={() => onAddSubtask(task, orgId, entry.project.id)}
                 compact={compact}
               />
             ))
@@ -572,7 +644,7 @@ function ProjectGroup({
 // ─── org group ────────────────────────────────────────────────────────────────
 
 function OrgGroup({
-  entry, router, searchQ, statusFilter, onEdit, onUpdated, onAddTask, onAddPriority, sortBy, compact,
+  entry, router, searchQ, statusFilter, onEdit, onUpdated, onAddTask, onAddPriority, onAddSubtask, sortBy, compact,
 }: {
   entry: MyTasksOrg;
   router: ReturnType<typeof useRouter>;
@@ -581,6 +653,7 @@ function OrgGroup({
   onUpdated: () => void;
   onAddTask: (orgId: string, projectId?: string) => void;
   onAddPriority: (task: MyTask, orgId: string) => void;
+  onAddSubtask: (task: MyTask, orgId: string, projectId: string) => void;
   sortBy: 'deadline' | 'priority' | 'status' | 'created';
   compact?: boolean;
 }) {
@@ -641,6 +714,7 @@ function OrgGroup({
               statusFilter={statusFilter}
               onAddTask={onAddTask}
               onAddPriority={onAddPriority}
+              onAddSubtask={onAddSubtask}
               sortBy={sortBy}
               compact={compact}
             />
@@ -671,6 +745,8 @@ export default function MyTasksPage() {
   const [addTaskProjectId, setAddTaskProjectId] = useState<string | undefined>(undefined);
   const [addTaskOpen, setAddTaskOpen] = useState(false);
   const [editTask, setEditTask] = useState<{ task: MyTask; orgId: string } | null>(null);
+  const [subtaskData, setSubtaskData] = useState<{ task: MyTask; orgId: string; projectId: string } | null>(null);
+  const [subtaskModalOpen, setSubtaskModalOpen] = useState(false);
 
   const grouped = data?.grouped ?? [];
   const total = data?.total ?? 0;
@@ -684,6 +760,11 @@ export default function MyTasksPage() {
     setAddTaskOrgId(orgId);
     setAddTaskProjectId(projectId);
     setAddTaskOpen(true);
+  }
+
+  function handleAddSubtask(task: MyTask, orgId: string, projectId: string) {
+    setSubtaskData({ task, orgId, projectId });
+    setSubtaskModalOpen(true);
   }
 
   const { data: session } = useSession();
@@ -866,6 +947,7 @@ export default function MyTasksPage() {
                   onUpdated={refreshAll}
                   onAddTask={handleAddTask}
                   onAddPriority={handleAddToPriorityList}
+                  onAddSubtask={handleAddSubtask}
                   sortBy={sortBy}
                   compact={viewMode === 'compact'}
                 />
@@ -895,6 +977,25 @@ export default function MyTasksPage() {
             orgId={editTask.orgId}
             projectId={editTask.task.projectId}
             task={editTask.task as unknown as Task}
+          />
+        )}
+
+        {/* Quick Add Subtask Modal */}
+        {subtaskData && (
+          <QuickAddSubtaskModal
+            open={subtaskModalOpen}
+            onOpenChange={(o) => {
+              if (!o) {
+                setSubtaskModalOpen(false);
+                setSubtaskData(null);
+              } else {
+                setSubtaskModalOpen(o);
+              }
+            }}
+            orgId={subtaskData.orgId}
+            projectId={subtaskData.projectId}
+            parentTaskId={subtaskData.task.id}
+            parentTaskTitle={subtaskData.task.title}
           />
         )}
       </div>

@@ -107,6 +107,12 @@ export async function GET(
               name: true,
             },
           },
+          parent: {
+            select: {
+              id: true,
+              title: true,
+            },
+          },
           _count: {
             select: {
               children: true,

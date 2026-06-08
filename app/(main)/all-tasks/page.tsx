@@ -7,6 +7,7 @@ import { useAllTasks, type AllTask } from '@/hooks/dashboard/useAllTasks';
 import { useDebounce } from '@/hooks/useDebounce';
 import { AddTaskFlow } from '@/components/tasks/AddTaskFlow';
 import { EditTaskDialog } from '@/components/tasks/EditTaskDialog';
+import { QuickAddSubtaskModal } from '@/components/tasks/QuickAddSubtaskModal';
 import { usePriorityTaskList } from '@/hooks/usePriorityTaskList';
 import { MultiSelectFilter, type MultiSelectOption } from '@/components/ui/multi-select-filter';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -41,7 +42,7 @@ import {
   Plus, Pencil, ArrowUpDown, ArrowUp, ArrowDown,
   ChevronLeft, ChevronRight, ExternalLink, Star, AlertCircle,
   CheckCircle2, Clock, Filter, X, RotateCcw,
-  List, LayoutGrid, GripVertical, ChevronDown,
+  List, LayoutGrid, GripVertical, ChevronDown, GitBranch,
 } from 'lucide-react';
 import type { Task } from '@/hooks/tasks/useTasks';
 
@@ -454,6 +455,8 @@ export default function AllTasksPage() {
   // Dialogs
   const [addTaskOpen, setAddTaskOpen] = useState(false);
   const [editTask, setEditTask] = useState<AllTask | null>(null);
+  const [subtaskData, setSubtaskData] = useState<{ task: AllTask; orgId: string; projectId: string } | null>(null);
+  const [subtaskModalOpen, setSubtaskModalOpen] = useState(false);
 
   const { data: tasksData, isLoading, error } = useAllTasks({ sortBy, sortOrder, page, limit: 100 });
 
@@ -487,7 +490,7 @@ export default function AllTasksPage() {
   }, [tasks]);
 
   // Client-side filtering
-  const filteredTasks = useMemo(() => tasks.filter((task) => {
+  const allFilteredTasks = useMemo(() => tasks.filter((task) => {
     if (debouncedSearch) {
       const q = debouncedSearch.toLowerCase();
       if (!task.title.toLowerCase().includes(q) && !(task.description?.toLowerCase().includes(q))) return false;
@@ -502,6 +505,25 @@ export default function AllTasksPage() {
     }
     return true;
   }), [tasks, debouncedSearch, orgFilter, statusFilter, priorityFilter, userFilter]);
+
+  // Separate parent and child tasks for list view
+  const parentTasks = useMemo(() =>
+    allFilteredTasks.filter((t) => !t.parentId),
+    [allFilteredTasks]
+  );
+
+  const childTasksByParent = useMemo(() => {
+    const map = new Map<string, AllTask[]>();
+    allFilteredTasks.filter((t) => t.parentId).forEach((t) => {
+      if (!map.has(t.parentId!)) {
+        map.set(t.parentId!, []);
+      }
+      map.get(t.parentId!)!.push(t);
+    });
+    return map;
+  }, [allFilteredTasks]);
+
+  const filteredTasks = allFilteredTasks;
 
   const activeFilterCount = orgFilter.length + statusFilter.length + priorityFilter.length + userFilter.length;
 
@@ -741,7 +763,7 @@ export default function AllTasksPage() {
               {/* Loading State */}
               {isLoading ? (
                 <Loading text="Loading tasks…" />
-              ) : filteredTasks.length === 0 ? (
+              ) : parentTasks.length === 0 ? (
                 <div className="rounded-lg border border-dashed p-12 text-center space-y-3">
                   <AlertCircle className="h-10 w-10 text-muted-foreground mx-auto opacity-50" />
                   <div>
@@ -792,17 +814,20 @@ export default function AllTasksPage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {filteredTasks.map((task) => {
+                        {parentTasks.map((task, idx) => {
                           const isCompleted = isCompletedTask(task.status);
                           const isOverdue = isOverdueTask(task);
+                          const subtasks = childTasksByParent.get(task.id) || [];
+                          const hasSubtasks = subtasks.length > 0;
 
                           return (
+                            <>
                             <TableRow
                               key={task.id}
                               id={`task-row-${task.id}`}
-                              className={`group cursor-pointer transition-colors ${
-                                isCompleted ? 'bg-muted/30 hover:bg-muted/50' : 'hover:bg-muted/20'
-                              }`}
+                              className={`group cursor-pointer transition-colors font-semibold border-b-2 border-muted ${
+                                isCompleted ? 'bg-muted/20 hover:bg-muted/40' : 'bg-card hover:bg-muted/30'
+                              } ${hasSubtasks ? 'border-l-4 border-l-primary' : ''}`}
                               onClick={() => applyHighlight(task.id)}
                             >
                               <TableCell onClick={(e) => e.stopPropagation()}>
@@ -869,6 +894,50 @@ export default function AllTasksPage() {
                                 <div className="flex gap-1 items-center justify-end opacity-0 group-hover:opacity-100 transition-opacity">
                                   <Tooltip>
                                     <TooltipTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-7 w-7"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          if (hasTask(task.id)) {
+                                            removeTask(task.id);
+                                          } else {
+                                            addTask({
+                                              taskId: task.id,
+                                              orgId: task.project.orgId,
+                                              projectId: task.project.id,
+                                              title: task.title,
+                                              priority: task.priority,
+                                              status: task.status,
+                                              assigneeId: task.assignee?.email,
+                                            });
+                                          }
+                                        }}
+                                      >
+                                        <Star className={`h-3.5 w-3.5 ${hasTask(task.id) ? 'fill-yellow-500 text-yellow-500' : 'text-muted-foreground'}`} />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>{hasTask(task.id) ? 'Remove from priority list' : 'Add to priority list'}</TooltipContent>
+                                  </Tooltip>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-7 w-7"
+                                        onClick={() => {
+                                          setSubtaskData({ task, orgId: task.project.orgId, projectId: task.project.id });
+                                          setSubtaskModalOpen(true);
+                                        }}
+                                      >
+                                        <GitBranch className="h-3.5 w-3.5" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Add subtask</TooltipContent>
+                                  </Tooltip>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
                                       <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditTask(task)}>
                                         <Pencil className="h-3.5 w-3.5" />
                                       </Button>
@@ -886,6 +955,147 @@ export default function AllTasksPage() {
                                 </div>
                               </TableCell>
                             </TableRow>
+                            {(childTasksByParent.get(task.id) || []).map((subtask) => {
+                              const subtaskCompleted = isCompletedTask(subtask.status);
+                              const subtaskOverdue = isOverdueTask(subtask);
+
+                              return (
+                                <TableRow
+                                  key={subtask.id}
+                                  id={`task-row-${subtask.id}`}
+                                  className={`group cursor-pointer transition-colors bg-amber-50/60 border-l-4 border-l-amber-400 hover:bg-amber-100/40 ${
+                                    subtaskCompleted ? 'opacity-60' : ''
+                                  }`}
+                                  onClick={() => applyHighlight(subtask.id)}
+                                >
+                                  <TableCell className="pl-16" onClick={(e) => e.stopPropagation()}>
+                                    <PrioritySelect task={subtask} onUpdated={refreshAll} />
+                                  </TableCell>
+                                  <TableCell
+                                    className={`font-medium cursor-pointer hover:underline max-w-[240px] ${
+                                      subtaskCompleted ? 'line-through text-muted-foreground' : ''
+                                    }`}
+                                    onDoubleClick={(e) => {
+                                      e.stopPropagation();
+                                      router.push(getTaskRoute(subtask));
+                                    }}
+                                  >
+                                    <div className="pl-8">
+                                      <span className="truncate block">↳ {subtask.title}</span>
+                                      {subtask.reviewer && (
+                                        <span className="text-xs text-muted-foreground block">
+                                          Rev: {subtask.reviewer.name || subtask.reviewer.email}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </TableCell>
+                                  <TableCell onClick={(e) => e.stopPropagation()}>
+                                    <StatusSelect task={subtask} onUpdated={refreshAll} />
+                                  </TableCell>
+                                  <TableCell className={`text-sm ${subtaskCompleted ? 'text-muted-foreground' : ''}`}>
+                                    {subtask.assignee ? (
+                                      <button
+                                        className={`text-left hover:underline ${
+                                          subtaskCompleted
+                                            ? 'text-muted-foreground'
+                                            : 'text-muted-foreground hover:text-foreground'
+                                        }`}
+                                        onClick={(e) => { e.stopPropagation(); router.push(`/orgs/${subtask.project.orgId}/members/${subtask.assignee!.id}`); }}
+                                      >
+                                        {subtask.assignee.name || subtask.assignee.email}
+                                      </button>
+                                    ) : <span className="text-muted-foreground">—</span>}
+                                  </TableCell>
+                                  <TableCell className={`text-xs ${subtaskCompleted ? 'text-muted-foreground' : ''}`}>
+                                    <button
+                                      className={`block truncate hover:underline text-left w-full ${
+                                        subtaskCompleted ? 'text-muted-foreground' : 'text-muted-foreground hover:text-foreground'
+                                      }`}
+                                      onClick={(e) => { e.stopPropagation(); router.push(`/orgs/${subtask.project.orgId}/overview`); }}
+                                    >{subtask.project.org.name}</button>
+                                    <button
+                                      className={`block truncate hover:underline text-left w-full ${
+                                        subtaskCompleted ? 'text-muted-foreground/60' : 'text-muted-foreground/70 hover:text-foreground'
+                                      }`}
+                                      onClick={(e) => { e.stopPropagation(); router.push(`/orgs/${subtask.project.orgId}/projects/${subtask.project.id}/dashboard`); }}
+                                    >{subtask.project.name}</button>
+                                  </TableCell>
+                                  <TableCell className={`text-sm ${subtaskCompleted ? 'text-muted-foreground' : ''}`}>
+                                    {subtask.deadlineDt ? (
+                                      <span className={subtaskOverdue ? 'text-destructive font-medium' : ''}>
+                                        {new Date(subtask.deadlineDt).toLocaleDateString()}
+                                        {subtaskOverdue && <span className="ml-1 text-xs">⚠</span>}
+                                      </span>
+                                    ) : <span className="text-muted-foreground">—</span>}
+                                  </TableCell>
+                                  <TableCell onClick={(e) => e.stopPropagation()}>
+                                    <div className="flex gap-1 items-center justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-7 w-7"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              if (hasTask(subtask.id)) {
+                                                removeTask(subtask.id);
+                                              } else {
+                                                addTask({
+                                                  taskId: subtask.id,
+                                                  orgId: subtask.project.orgId,
+                                                  projectId: subtask.project.id,
+                                                  title: subtask.title,
+                                                  priority: subtask.priority,
+                                                  status: subtask.status,
+                                                  assigneeId: subtask.assignee?.email,
+                                                });
+                                              }
+                                            }}
+                                          >
+                                            <Star className={`h-3.5 w-3.5 ${hasTask(subtask.id) ? 'fill-yellow-500 text-yellow-500' : 'text-muted-foreground'}`} />
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>{hasTask(subtask.id) ? 'Remove from priority list' : 'Add to priority list'}</TooltipContent>
+                                      </Tooltip>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-7 w-7"
+                                            onClick={() => {
+                                              setSubtaskData({ task: subtask, orgId: subtask.project.orgId, projectId: subtask.project.id });
+                                              setSubtaskModalOpen(true);
+                                            }}
+                                          >
+                                            <GitBranch className="h-3.5 w-3.5" />
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>Add subtask</TooltipContent>
+                                      </Tooltip>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditTask(subtask)}>
+                                            <Pencil className="h-3.5 w-3.5" />
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>Edit task</TooltipContent>
+                                      </Tooltip>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => router.push(getTaskRoute(subtask))}>
+                                            <ExternalLink className="h-3.5 w-3.5" />
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>Open task</TooltipContent>
+                                      </Tooltip>
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })}
+                            </>
                           );
                         })}
                       </TableBody>
@@ -944,6 +1154,24 @@ export default function AllTasksPage() {
             orgId={editTask.project.orgId}
             projectId={editTask.project.id}
             task={editTask as unknown as Task}
+          />
+        )}
+
+        {subtaskData && (
+          <QuickAddSubtaskModal
+            open={subtaskModalOpen}
+            onOpenChange={(o) => {
+              if (!o) {
+                setSubtaskModalOpen(false);
+                setSubtaskData(null);
+              } else {
+                setSubtaskModalOpen(o);
+              }
+            }}
+            orgId={subtaskData.orgId}
+            projectId={subtaskData.projectId}
+            parentTaskId={subtaskData.task.id}
+            parentTaskTitle={subtaskData.task.title}
           />
         )}
       </div>

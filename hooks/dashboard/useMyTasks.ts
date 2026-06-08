@@ -8,6 +8,7 @@ export interface MyTask {
   type: string;
   status: string;
   priority: string;
+  parentId?: string | null;
   deadlineDt?: string | null;
   startDt?: string | null;
   endDt?: string | null;
@@ -15,6 +16,7 @@ export interface MyTask {
   updatedAt: string;
   projectId: string;
   reviewer?: { id: string; email: string; name?: string | null } | null;
+  parent?: { id: string; title: string } | null;
 }
 
 export interface MyTasksProject {

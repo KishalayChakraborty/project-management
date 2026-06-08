@@ -27,6 +27,7 @@ export async function GET() {
           },
         },
         reviewer: { select: { id: true, email: true, name: true } },
+        parent: { select: { id: true, title: true } },
       },
       orderBy: [{ status: 'asc' }, { deadlineDt: 'asc' }, { createdAt: 'desc' }],
     });
