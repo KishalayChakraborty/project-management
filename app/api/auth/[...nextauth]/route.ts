@@ -60,7 +60,7 @@ export const authOptions: NextAuthOptions = {
     async session({ session, token }) {
       if (token && session.user) {
         session.user.id = token.id as string;
-        session.accessToken = token;
+        // Removed accessToken assignment - NextAuth JWT is sent via cookies
       }
       return session;
     },

@@ -21,7 +21,7 @@ import {
   SidebarTrigger,
   useSidebar,
 } from '@/components/ui/sidebar';
-import { LayoutDashboard, Users, Layers, FolderKanban, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, Users, Layers, FolderKanban, ChevronRight, Briefcase } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { homeNavItems } from '@/lib/navigation-constants';
 
@@ -30,6 +30,7 @@ const orgNavItems = [
   { title: 'Members', icon: Users, segment: 'members' },
   { title: 'Teams', icon: Layers, segment: 'teams' },
   { title: 'Projects', icon: FolderKanban, segment: 'projects' },
+  { title: 'HR', icon: Briefcase, segment: 'hr' },
 ];
 
 function OrgSidebarHeader({ org }: { org: any }) {
@@ -63,8 +64,9 @@ export default function OrgLayout({
   // Routes that have their own layout/sidebar — pass through without wrapping
   const isProjectDetailRoute = /\/projects\/[^/]+/.test(pathname || '');
   const isMyWorkRoute = pathname?.includes('/my-work');
+  const isHRRoute = pathname?.includes('/hr/') && pathname !== `/orgs/${orgId}/hr`;
 
-  if (isProjectDetailRoute || isMyWorkRoute) {
+  if (isProjectDetailRoute || isMyWorkRoute || isHRRoute) {
     return <>{children}</>;
   }
 

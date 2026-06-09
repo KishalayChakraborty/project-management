@@ -6,17 +6,14 @@ export const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true, // Send cookies with requests (includes JWT from NextAuth)
 });
 
 api.interceptors.request.use(
   async (config) => {
     const session = await getSession();
-    
-    if (session?.accessToken) {
-      config.headers.Authorization = `Bearer ${session.accessToken}`;
-    }
 
-    const orgId = session?.orgId;
+    const orgId = session?.orgId || (session?.user as any)?.orgId;
     if (orgId) {
       config.headers['X-Org-Id'] = orgId;
     }

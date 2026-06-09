@@ -145,6 +145,16 @@ model User {
   recurringTasksAssigned    RecurringTaskTemplate[]   @relation("RecurringAssignee")
   recurringTasksReviewed    RecurringTaskTemplate[]   @relation("RecurringReviewer")
   workSessions              WorkSession[]
+  createdJobProfiles        JobProfile[]
+  createdJobAds             JobAdvertisement[]
+  createdApplicants         Applicant[]
+  createdInterviewRounds    InterviewRound[]
+  interviewFeedbacks        InterviewFeedback[]
+  createdSalaryStructures   SalaryStructure[]
+  createdSalaryNegotiations SalaryNegotiation[]
+  createdEmploymentOffers   EmploymentOffer[]
+  createdHiringBudgets      HiringBudget[]
+  interviewRoundInterviewers InterviewRoundInterviewer[]
 
   @@index([isVirtual])
   @@index([createdByUserId])
@@ -177,6 +187,14 @@ model Organization {
   auditLogs          AuditLog[]
   projectDocs        ProjectDoc[]
   recurringTemplates RecurringTaskTemplate[]
+  jobProfiles        JobProfile[]
+  jobAdvertisements  JobAdvertisement[]
+  applicants         Applicant[]
+  interviewRounds    InterviewRound[]
+  salaryStructures   SalaryStructure[]
+  salaryNegotiations SalaryNegotiation[]
+  employmentOffers   EmploymentOffer[]
+  hiringBudgets      HiringBudget[]
 
   @@map("organizations")
 }
@@ -259,7 +277,7 @@ model Project {
   deadline      DateTime?
   costToDate    Decimal       @default(0) @map("cost_to_date") @db.Decimal(15, 2)
   budgetTotal   Decimal?      @map("budget_total") @db.Decimal(15, 2)
-  currency      String        @default("USD")
+  currency      String        @default("INR")
   metadata      Json?         @default("{}")
   createdBy     String        @map("created_by")
   createdAt     DateTime      @default(now()) @map("created_at")
@@ -653,6 +671,98 @@ enum DocVisibility {
   ADMIN_ONLY
 }
 
+enum JobLevel {
+  INTERN
+  JUNIOR
+  MID
+  SENIOR
+  LEAD
+  MANAGER
+  DIRECTOR
+  VP
+  C_LEVEL
+}
+
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  INTERNSHIP
+  FREELANCE
+}
+
+enum JobAdStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  CLOSED
+}
+
+enum ApplicantSource {
+  PUBLIC_LINK
+  HR_ADDED
+  REFERRAL
+  AGENCY
+}
+
+enum ApplicantStatus {
+  NEW
+  SCREENING
+  INTERVIEW
+  OFFER
+  HIRED
+  REJECTED
+  WITHDRAWN
+}
+
+enum InterviewType {
+  PHONE_SCREEN
+  VIDEO_CALL
+  IN_PERSON
+  TECHNICAL
+  HR_ROUND
+  PANEL
+  REFERENCE_CHECK
+}
+
+enum InterviewStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum FeedbackRecommendation {
+  STRONG_HIRE
+  HIRE
+  NEUTRAL
+  NO_HIRE
+  STRONG_NO_HIRE
+}
+
+enum OfferStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  DECLINED
+  WITHDRAWN
+  EXPIRED
+}
+
+enum NegotiationStatus {
+  INITIAL
+  NEGOTIATING
+  AGREED
+  REJECTED
+}
+
+enum AIProvider {
+  CLAUDE
+  OPENAI
+  GEMINI
+  TEMPLATE
+}
+
 model ProjectDoc {
   id          String        @id @default(uuid())
   projectId   String        @map("project_id")
@@ -757,4 +867,344 @@ model PasswordResetToken {
   @@index([token])
   @@index([userId])
   @@map("password_reset_tokens")
+}
+
+model JobProfile {
+  id                    String        @id @default(uuid())
+  orgId                 String        @map("org_id")
+  title                 String
+  code                  String
+  department            String?
+  level                 JobLevel
+  employmentType        EmploymentType
+  description           String?
+  responsibilities      Json?
+  requirements          Json?
+  niceToHave            Json?
+  minExperienceYears    Int?          @map("min_experience_years")
+  maxExperienceYears    Int?          @map("max_experience_years")
+  skills                Json?
+  educationLevel        String?       @map("education_level")
+  isActive              Boolean       @default(true) @map("is_active")
+  createdBy             String        @map("created_by")
+  createdAt             DateTime      @default(now()) @map("created_at")
+  updatedAt             DateTime      @updatedAt @map("updated_at")
+
+  org                   Organization  @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  creator               User          @relation(fields: [createdBy], references: [id])
+  advertisements        JobAdvertisement[]
+  applicants            Applicant[]
+  hiringBudgets         HiringBudget[]
+  offers                EmploymentOffer[]
+
+  @@unique([orgId, code])
+  @@index([orgId])
+  @@map("job_profiles")
+}
+
+model JobAdvertisement {
+  id                    String        @id @default(uuid())
+  orgId                 String        @map("org_id")
+  jobProfileId          String        @map("job_profile_id")
+  title                 String
+  adContent             String        @map("ad_content")
+  aiProvider            AIProvider    @default(TEMPLATE) @map("ai_provider")
+  aiModifications       String?       @map("ai_modifications")
+  publicToken           String        @unique @map("public_token")
+  status                JobAdStatus   @default(DRAFT)
+  deadline              DateTime?
+  location              String?
+  isRemote              Boolean       @default(false) @map("is_remote")
+  salaryRangeMin        Decimal?      @map("salary_range_min") @db.Decimal(15, 2)
+  salaryRangeMax        Decimal?      @map("salary_range_max") @db.Decimal(15, 2)
+  salaryCurrency        String        @default("INR") @map("salary_currency")
+  showSalary            Boolean       @default(false) @map("show_salary")
+  createdBy             String        @map("created_by")
+  createdAt             DateTime      @default(now()) @map("created_at")
+  updatedAt             DateTime      @updatedAt @map("updated_at")
+
+  org                   Organization  @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  jobProfile            JobProfile    @relation(fields: [jobProfileId], references: [id], onDelete: Cascade)
+  creator               User          @relation(fields: [createdBy], references: [id])
+  applicants            Applicant[]
+  offers                EmploymentOffer[] @relation("AdvertisementOffer")
+
+  @@index([orgId])
+  @@index([jobProfileId])
+  @@index([publicToken])
+  @@index([status])
+  @@map("job_advertisements")
+}
+
+model Applicant {
+  id                    String        @id @default(uuid())
+  orgId                 String        @map("org_id")
+  jobProfileId          String?       @map("job_profile_id")
+  advertisementId       String?       @map("advertisement_id")
+  firstName             String        @map("first_name")
+  lastName              String        @map("last_name")
+  email                 String
+  phone                 String?
+  alternatePhone        String?       @map("alternate_phone")
+  linkedinUrl           String?       @map("linkedin_url")
+  githubUrl             String?       @map("github_url")
+  portfolioUrl          String?       @map("portfolio_url")
+  otherLinks            Json?         @map("other_links")
+  city                  String?
+  country               String?
+  address               String?
+  cvMinioPath           String?       @map("cv_minio_path")
+  cvPublicUrl           String?       @map("cv_public_url")
+  cvFileName            String?       @map("cv_file_name")
+  cvFileSize            Int?          @map("cv_file_size")
+  currentCompany        String?       @map("current_company")
+  currentTitle          String?       @map("current_title")
+  currentSalary         Decimal?      @map("current_salary") @db.Decimal(15, 2)
+  currentCurrency       String        @default("INR") @map("current_currency")
+  noticePeriodDays      Int?          @map("notice_period_days")
+  expectedSalaryMin     Decimal?      @map("expected_salary_min") @db.Decimal(15, 2)
+  expectedSalaryMax     Decimal?      @map("expected_salary_max") @db.Decimal(15, 2)
+  expectedCurrency      String        @default("INR") @map("expected_currency")
+  source                ApplicantSource @default(HR_ADDED)
+  referredBy            String?       @map("referred_by")
+  status                ApplicantStatus @default(NEW)
+  internalNotes         String?       @map("internal_notes")
+  appliedAt             DateTime      @default(now()) @map("applied_at")
+  createdBy             String?       @map("created_by")
+  createdAt             DateTime      @default(now()) @map("created_at")
+  updatedAt             DateTime      @updatedAt @map("updated_at")
+
+  org                   Organization  @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  jobProfile            JobProfile?   @relation(fields: [jobProfileId], references: [id], onDelete: SetNull)
+  advertisement         JobAdvertisement? @relation(fields: [advertisementId], references: [id], onDelete: SetNull)
+  creator               User?         @relation(fields: [createdBy], references: [id], onDelete: SetNull)
+  educations            ApplicantEducation[]
+  experiences           ApplicantExperience[]
+  interviewRounds       InterviewRound[]
+  salaryStructures      SalaryStructure[]
+  salaryNegotiations    SalaryNegotiation[]
+  offers                EmploymentOffer[]
+
+  @@unique([orgId, email])
+  @@index([orgId])
+  @@index([jobProfileId])
+  @@index([advertisementId])
+  @@index([status])
+  @@map("applicants")
+}
+
+model ApplicantEducation {
+  id                    String        @id @default(uuid())
+  applicantId           String        @map("applicant_id")
+  degree                String
+  institution           String
+  fieldOfStudy          String?       @map("field_of_study")
+  startYear             Int?          @map("start_year")
+  endYear               Int?          @map("end_year")
+  grade                 String?
+  isCurrent             Boolean       @default(false) @map("is_current")
+
+  applicant             Applicant     @relation(fields: [applicantId], references: [id], onDelete: Cascade)
+
+  @@index([applicantId])
+  @@map("applicant_educations")
+}
+
+model ApplicantExperience {
+  id                    String        @id @default(uuid())
+  applicantId           String        @map("applicant_id")
+  company               String
+  title                 String
+  startDate             DateTime?     @map("start_date")
+  endDate               DateTime?     @map("end_date")
+  isCurrent             Boolean       @default(false) @map("is_current")
+  description           String?
+
+  applicant             Applicant     @relation(fields: [applicantId], references: [id], onDelete: Cascade)
+
+  @@index([applicantId])
+  @@map("applicant_experiences")
+}
+
+model InterviewRound {
+  id                    String        @id @default(uuid())
+  orgId                 String        @map("org_id")
+  applicantId           String        @map("applicant_id")
+  roundNumber           Int           @map("round_number")
+  type                  InterviewType
+  status                InterviewStatus @default(SCHEDULED)
+  scheduledAt           DateTime?     @map("scheduled_at")
+  completedAt           DateTime?     @map("completed_at")
+  durationMin           Int?          @map("duration_min")
+  meetingLink           String?       @map("meeting_link")
+  location              String?
+  agenda                String?
+  createdBy             String        @map("created_by")
+  createdAt             DateTime      @default(now()) @map("created_at")
+  updatedAt             DateTime      @updatedAt @map("updated_at")
+
+  org                   Organization  @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  applicant             Applicant     @relation(fields: [applicantId], references: [id], onDelete: Cascade)
+  creator               User          @relation(fields: [createdBy], references: [id])
+  interviewers          InterviewRoundInterviewer[]
+  feedbacks             InterviewFeedback[]
+
+  @@index([orgId])
+  @@index([applicantId])
+  @@index([status])
+  @@map("interview_rounds")
+}
+
+model InterviewRoundInterviewer {
+  roundId               String        @map("round_id")
+  userId                String        @map("user_id")
+
+  round                 InterviewRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  user                  User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([roundId, userId])
+  @@map("interview_round_interviewers")
+}
+
+model InterviewFeedback {
+  id                    String        @id @default(uuid())
+  roundId               String        @map("round_id")
+  userId                String        @map("user_id")
+  recommendation        FeedbackRecommendation
+  technicalScore        Int?          @map("technical_score")
+  communicationScore    Int?          @map("communication_score")
+  problemSolvingScore   Int?          @map("problem_solving_score")
+  cultureScore          Int?          @map("culture_score")
+  overallScore          Int?          @map("overall_score")
+  strengths             String?
+  weaknesses            String?
+  notes                 String?
+  isSubmitted           Boolean       @default(false) @map("is_submitted")
+  submittedAt           DateTime?     @map("submitted_at")
+  createdAt             DateTime      @default(now()) @map("created_at")
+  updatedAt             DateTime      @updatedAt @map("updated_at")
+
+  round                 InterviewRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  interviewer           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([roundId, userId])
+  @@index([roundId])
+  @@index([userId])
+  @@map("interview_feedbacks")
+}
+
+model SalaryStructure {
+  id                    String        @id @default(uuid())
+  orgId                 String        @map("org_id")
+  applicantId           String        @map("applicant_id")
+  baseSalary            Decimal       @map("base_salary") @db.Decimal(15, 2)
+  currency              String        @default("USD")
+  variablePay           Decimal?      @map("variable_pay") @db.Decimal(15, 2)
+  signingBonus          Decimal?      @map("signing_bonus") @db.Decimal(15, 2)
+  stockOptions          Decimal?      @map("stock_options") @db.Decimal(15, 2)
+  annualLeave           Int?          @map("annual_leave")
+  otherBenefits         Json?         @map("other_benefits")
+  workingHoursPerWeek   Int?          @map("working_hours_per_week")
+  workLocation          String?       @map("work_location")
+  specialConsiderations String?       @map("special_considerations")
+  createdBy             String        @map("created_by")
+  createdAt             DateTime      @default(now()) @map("created_at")
+  updatedAt             DateTime      @updatedAt @map("updated_at")
+
+  org                   Organization  @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  applicant             Applicant     @relation(fields: [applicantId], references: [id], onDelete: Cascade)
+  creator               User          @relation(fields: [createdBy], references: [id])
+  negotiations          SalaryNegotiation[]
+  offers                EmploymentOffer[]
+
+  @@index([orgId])
+  @@index([applicantId])
+  @@map("salary_structures")
+}
+
+model SalaryNegotiation {
+  id                    String        @id @default(uuid())
+  salaryStructureId     String        @map("salary_structure_id")
+  applicantId           String        @map("applicant_id")
+  orgId                 String        @map("org_id")
+  roundNumber           Int           @map("round_number")
+  proposedByApplicant   Boolean       @map("proposed_by_applicant")
+  proposedBaseSalary    Decimal?      @map("proposed_base_salary") @db.Decimal(15, 2)
+  proposedVariable      Decimal?      @map("proposed_variable") @db.Decimal(15, 2)
+  notes                 String?
+  status                NegotiationStatus
+  createdBy             String        @map("created_by")
+  createdAt             DateTime      @default(now()) @map("created_at")
+  respondedAt           DateTime?     @map("responded_at")
+
+  salaryStructure       SalaryStructure @relation(fields: [salaryStructureId], references: [id], onDelete: Cascade)
+  applicant             Applicant     @relation(fields: [applicantId], references: [id], onDelete: Cascade)
+  org                   Organization  @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  creator               User          @relation(fields: [createdBy], references: [id])
+
+  @@index([salaryStructureId])
+  @@index([applicantId])
+  @@index([orgId])
+  @@map("salary_negotiations")
+}
+
+model EmploymentOffer {
+  id                    String        @id @default(uuid())
+  orgId                 String        @map("org_id")
+  applicantId           String        @map("applicant_id")
+  salaryStructureId     String        @map("salary_structure_id")
+  jobProfileId          String?       @map("job_profile_id")
+  advertisementId       String?       @map("advertisement_id")
+  status                OfferStatus   @default(DRAFT)
+  offerMinioPath        String?       @map("offer_minio_path")
+  offerPublicUrl        String?       @map("offer_public_url")
+  offerFileName         String?       @map("offer_file_name")
+  assignedRole          OrgMemberRole @default(MEMBER) @map("assigned_role")
+  sentAt                DateTime?     @map("sent_at")
+  expiresAt             DateTime?     @map("expires_at")
+  acceptedAt            DateTime?     @map("accepted_at")
+  declinedAt            DateTime?     @map("declined_at")
+  declineReason         String?       @map("decline_reason")
+  joiningDate           DateTime?     @map("joining_date")
+  joiningConfirmed      Boolean       @default(false) @map("joining_confirmed")
+  createdBy             String        @map("created_by")
+  createdAt             DateTime      @default(now()) @map("created_at")
+  updatedAt             DateTime      @updatedAt @map("updated_at")
+
+  org                   Organization  @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  applicant             Applicant     @relation(fields: [applicantId], references: [id], onDelete: Cascade)
+  salaryStructure       SalaryStructure @relation(fields: [salaryStructureId], references: [id], onDelete: Cascade)
+  jobProfile            JobProfile?   @relation(fields: [jobProfileId], references: [id], onDelete: SetNull)
+  advertisement         JobAdvertisement? @relation("AdvertisementOffer", fields: [advertisementId], references: [id], onDelete: SetNull)
+  creator               User          @relation(fields: [createdBy], references: [id])
+
+  @@index([orgId])
+  @@index([applicantId])
+  @@index([status])
+  @@map("employment_offers")
+}
+
+model HiringBudget {
+  id                    String        @id @default(uuid())
+  orgId                 String        @map("org_id")
+  jobProfileId          String?       @map("job_profile_id")
+  fiscalYear            Int           @map("fiscal_year")
+  department            String
+  budgetedPositions     Int           @map("budgeted_positions")
+  filledPositions       Int           @default(0) @map("filled_positions")
+  allocatedAmount       Decimal       @map("allocated_amount") @db.Decimal(15, 2)
+  spentAmount           Decimal       @default(0) @map("spent_amount") @db.Decimal(15, 2)
+  currency              String        @default("USD")
+  notes                 String?
+  createdBy             String        @map("created_by")
+  createdAt             DateTime      @default(now()) @map("created_at")
+  updatedAt             DateTime      @updatedAt @map("updated_at")
+
+  org                   Organization  @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  jobProfile            JobProfile?   @relation(fields: [jobProfileId], references: [id], onDelete: SetNull)
+  creator               User          @relation(fields: [createdBy], references: [id])
+
+  @@index([orgId])
+  @@index([jobProfileId])
+  @@map("hiring_budgets")
 }
