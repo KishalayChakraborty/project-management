@@ -67,7 +67,7 @@ export async function POST(
     }
 
     const body = await request.json();
-    const { interviewerIds, ...data } = interviewSchema.parse(body);
+    const { interviewerIds, scheduledAt, ...data } = interviewSchema.parse(body);
 
     const roundNumber =
       ((await prisma.interviewRound.count({
@@ -77,6 +77,7 @@ export async function POST(
     const interview = await prisma.interviewRound.create({
       data: {
         ...data,
+        scheduledAt: new Date(scheduledAt),
         roundNumber,
         applicantId,
         orgId,
