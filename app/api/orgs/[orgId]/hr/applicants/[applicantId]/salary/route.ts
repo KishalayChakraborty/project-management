@@ -6,7 +6,7 @@ import { z } from 'zod';
 
 const salarySchema = z.object({
   baseSalary: z.number().min(0),
-  currency: z.string().default('USD'),
+  currency: z.string().default('INR'),
   variablePay: z.number().optional(),
   signingBonus: z.number().optional(),
   stockOptions: z.number().optional(),

@@ -12,9 +12,18 @@ const createApplicantSchema = z.object({
   email: z.string().email(),
   phone: z.string().optional(),
   alternatePhone: z.string().optional(),
-  linkedinUrl: z.string().url().optional(),
-  githubUrl: z.string().url().optional(),
-  portfolioUrl: z.string().url().optional(),
+  linkedinUrl: z.preprocess(
+    (val) => (val === '' || val === null ? undefined : val),
+    z.string().url().optional()
+  ),
+  githubUrl: z.preprocess(
+    (val) => (val === '' || val === null ? undefined : val),
+    z.string().url().optional()
+  ),
+  portfolioUrl: z.preprocess(
+    (val) => (val === '' || val === null ? undefined : val),
+    z.string().url().optional()
+  ),
   city: z.string().optional(),
   country: z.string().optional(),
   address: z.string().optional(),
@@ -86,7 +95,17 @@ export async function POST(
     const user = await requireAuth();
     await requireOrgRole(orgId, user.id, ['ADMIN', 'MAINTAINER']);
 
-    const body = await request.json();
+    let body: any;
+    const contentType = request.headers.get('content-type');
+
+    if (contentType?.includes('multipart/form-data')) {
+      const formData = await request.formData();
+      const dataStr = formData.get('data');
+      body = typeof dataStr === 'string' ? JSON.parse(dataStr) : dataStr;
+    } else {
+      body = await request.json();
+    }
+
     const data = createApplicantSchema.parse(body);
 
     const applicant = await prisma.applicant.create({

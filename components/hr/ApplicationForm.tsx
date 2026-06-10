@@ -24,9 +24,18 @@ export const applicationSchema = z.object({
   lastName: z.string().min(1, 'Last name is required'),
   email: z.string().email('Invalid email'),
   phone: z.string().min(1, 'Phone is required'),
-  linkedinUrl: z.string().optional(),
-  githubUrl: z.string().optional(),
-  portfolioUrl: z.string().optional(),
+  linkedinUrl: z.preprocess(
+    (val) => (val === '' || val === null ? undefined : val),
+    z.string().url('Invalid LinkedIn URL').optional()
+  ),
+  githubUrl: z.preprocess(
+    (val) => (val === '' || val === null ? undefined : val),
+    z.string().url('Invalid GitHub URL').optional()
+  ),
+  portfolioUrl: z.preprocess(
+    (val) => (val === '' || val === null ? undefined : val),
+    z.string().url('Invalid Portfolio URL').optional()
+  ),
   city: z.string().optional(),
   country: z.string().optional(),
   expectedSalaryMin: z.preprocess(

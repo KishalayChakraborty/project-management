@@ -8,6 +8,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { InterviewScheduleDialog } from '@/components/hr/InterviewScheduleDialog';
+import { SalaryStructureDialog } from '@/components/hr/SalaryStructureDialog';
+import { EmploymentOfferDialog } from '@/components/hr/EmploymentOfferDialog';
 
 export default function ApplicantDetailPage() {
   const params = useParams();
@@ -15,19 +18,23 @@ export default function ApplicantDetailPage() {
   const orgId = params.orgId as string;
   const applicantId = params.applicantId as string;
   const [applicant, setApplicant] = useState<any>(null);
+  const [jobProfiles, setJobProfiles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   useEffect(() => {
-    const fetchApplicant = async () => {
+    const fetchData = async () => {
       try {
-        const response = await axios.get(
-          `/api/orgs/${orgId}/hr/applicants/${applicantId}`
-        );
-        setApplicant(response.data.data);
+        const [applicantRes, jobsRes] = await Promise.all([
+          axios.get(`/api/orgs/${orgId}/hr/applicants/${applicantId}`),
+          axios.get(`/api/orgs/${orgId}/hr/job-profiles`),
+        ]);
+        setApplicant(applicantRes.data.data);
+        setJobProfiles(jobsRes.data.data || []);
       } catch (error) {
         toast({
           title: 'Error',
-          description: 'Failed to load applicant details',
+          description: 'Failed to load details',
           variant: 'destructive',
         });
       } finally {
@@ -35,8 +42,12 @@ export default function ApplicantDetailPage() {
       }
     };
 
-    fetchApplicant();
-  }, [orgId, applicantId, toast]);
+    fetchData();
+  }, [orgId, applicantId, toast, refreshTrigger]);
+
+  const handleRefresh = () => {
+    setRefreshTrigger((prev) => prev + 1);
+  };
 
   if (loading) {
     return (
@@ -227,6 +238,14 @@ export default function ApplicantDetailPage() {
         </TabsContent>
 
         <TabsContent value="interviews" className="space-y-4">
+          <div className="flex gap-2">
+            <InterviewScheduleDialog
+              orgId={orgId}
+              applicantId={applicantId}
+              onSuccess={handleRefresh}
+            />
+          </div>
+
           {applicant.interviewRounds && applicant.interviewRounds.length > 0 ? (
             applicant.interviewRounds.map((round: any) => (
               <Card key={round.id}>
@@ -268,40 +287,78 @@ export default function ApplicantDetailPage() {
               </Card>
             ))
           ) : (
-            <p className="text-muted-foreground">No interview rounds</p>
+            <p className="text-muted-foreground">No interview rounds scheduled</p>
           )}
         </TabsContent>
 
         <TabsContent value="salary" className="space-y-4">
+          <div className="flex gap-2 flex-wrap">
+            <SalaryStructureDialog
+              orgId={orgId}
+              applicantId={applicantId}
+              onSuccess={handleRefresh}
+            />
+            <EmploymentOfferDialog
+              orgId={orgId}
+              applicantId={applicantId}
+              jobProfiles={jobProfiles}
+              salaryStructures={applicant.salaryStructures || []}
+              onSuccess={handleRefresh}
+            />
+          </div>
+
           {applicant.salaryStructures && applicant.salaryStructures.length > 0 ? (
-            applicant.salaryStructures.map((salary: any) => (
-              <Card key={salary.id}>
-                <CardHeader>
-                  <CardTitle className="text-base">Salary Structure</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm font-medium">Base Salary</label>
-                      <p>₹ {salary.baseSalary.toLocaleString('en-IN')}</p>
-                    </div>
-                    {salary.variablePay && (
-                      <div>
-                        <label className="text-sm font-medium">Variable Pay</label>
-                        <p>₹ {salary.variablePay.toLocaleString('en-IN')}</p>
+            <div>
+              <h3 className="font-semibold mb-4">Salary Structures</h3>
+              <div className="space-y-4">
+                {applicant.salaryStructures.map((salary: any) => (
+                  <Card key={salary.id}>
+                    <CardHeader>
+                      <CardTitle className="text-base">Salary Structure</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-sm font-medium">Base Salary</label>
+                          <p>₹ {salary.baseSalary.toLocaleString('en-IN')}</p>
+                        </div>
+                        {salary.variablePay && (
+                          <div>
+                            <label className="text-sm font-medium">Variable Pay</label>
+                            <p>₹ {salary.variablePay.toLocaleString('en-IN')}</p>
+                          </div>
+                        )}
+                        {salary.signingBonus && (
+                          <div>
+                            <label className="text-sm font-medium">Signing Bonus</label>
+                            <p>₹ {salary.signingBonus.toLocaleString('en-IN')}</p>
+                          </div>
+                        )}
+                        {salary.annualLeave && (
+                          <div>
+                            <label className="text-sm font-medium">Annual Leave</label>
+                            <p>{salary.annualLeave} days</p>
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))
+                      {salary.workLocation && (
+                        <div>
+                          <label className="text-sm font-medium">Work Location</label>
+                          <p>{salary.workLocation}</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
           ) : (
             <p className="text-muted-foreground">No salary structures</p>
           )}
 
           {applicant.offers && applicant.offers.length > 0 ? (
             <div className="space-y-4">
-              <h3 className="font-semibold">Offers</h3>
+              <h3 className="font-semibold">Employment Offers</h3>
               {applicant.offers.map((offer: any) => (
                 <Card key={offer.id}>
                   <CardContent className="pt-6">
@@ -320,13 +377,16 @@ export default function ApplicantDetailPage() {
                           Expires: {new Date(offer.expiresAt).toLocaleDateString()}
                         </div>
                       )}
+                      <div className="text-sm">
+                        Role: {offer.assignedRole}
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
               ))}
             </div>
           ) : (
-            <p className="text-muted-foreground">No offers</p>
+            <p className="text-muted-foreground">No employment offers</p>
           )}
         </TabsContent>
       </Tabs>
