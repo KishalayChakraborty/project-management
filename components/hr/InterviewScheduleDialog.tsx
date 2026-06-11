@@ -74,7 +74,7 @@ export function InterviewScheduleDialog({
       const tzOffset = new Date().getTimezoneOffset();
       await axios.post(
         `/api/orgs/${orgId}/hr/applicants/${applicantId}/interviews`,
-        data
+        { ...data, tzOffset }
       );
       toast({
         title: 'Success',

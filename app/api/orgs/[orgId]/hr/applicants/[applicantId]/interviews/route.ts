@@ -12,6 +12,7 @@ const interviewSchema = z.object({
   meetingLink: z.string().optional(),
   agenda: z.string().optional(),
   interviewerIds: z.array(z.string()).optional(),
+  tzOffset: z.number().optional(),
 });
 
 export async function GET(
@@ -67,7 +68,12 @@ export async function POST(
     }
 
     const body = await request.json();
-    const { interviewerIds, scheduledAt, ...data } = interviewSchema.parse(body);
+    const { interviewerIds, scheduledAt, tzOffset, ...data } = interviewSchema.parse(body);
+
+    // Convert datetime-local (which is in user's local time) to UTC
+    // datetime-local value needs tzOffset adjustment to get UTC time
+    const offsetMs = (tzOffset || 0) * 60 * 1000;
+    const scheduledDate = new Date(new Date(scheduledAt).getTime() + offsetMs);
 
     const roundNumber =
       ((await prisma.interviewRound.count({
@@ -77,7 +83,7 @@ export async function POST(
     const interview = await prisma.interviewRound.create({
       data: {
         ...data,
-        scheduledAt: new Date(new Date(scheduledAt).getTime() + (5.5 * 60 * 60 * 1000)),
+        scheduledAt: scheduledDate,
         roundNumber,
         applicantId,
         orgId,
