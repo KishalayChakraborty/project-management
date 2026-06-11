@@ -77,7 +77,7 @@ export async function POST(
     const interview = await prisma.interviewRound.create({
       data: {
         ...data,
-        scheduledAt: new Date(scheduledAt),
+        scheduledAt: new Date(new Date(scheduledAt).getTime() + (5.5 * 60 * 60 * 1000)),
         roundNumber,
         applicantId,
         orgId,

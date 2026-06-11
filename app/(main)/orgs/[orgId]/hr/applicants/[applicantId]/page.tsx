@@ -296,13 +296,64 @@ export default function ApplicantDetailPage() {
                   </div>
                   {round.feedbacks && round.feedbacks.length > 0 && (
                     <div className="mt-4 space-y-3">
-                      <label className="text-sm font-medium">Feedback</label>
+                      <label className="text-sm font-medium">Feedback from Interviewers</label>
                       {round.feedbacks.map((feedback: any) => (
-                        <div key={feedback.id} className="text-sm border-l-2 pl-3">
-                          <div className="font-medium">{feedback.recommendation}</div>
-                          <div>Overall Score: {feedback.overallScore}/10</div>
+                        <div key={feedback.id} className="border rounded p-3 bg-gray-50 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div className="font-medium text-base">{feedback.recommendation}</div>
+                            <div className="text-sm text-muted-foreground">Score: {feedback.overallScore}/10</div>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-sm">
+                            <div className="text-center border rounded p-2 bg-white">
+                              <div className="text-xs font-medium text-muted-foreground">Overall</div>
+                              <div className="text-lg font-bold">{feedback.overallScore}</div>
+                            </div>
+                            {feedback.technicalScore && (
+                              <div className="text-center border rounded p-2 bg-white">
+                                <div className="text-xs font-medium text-muted-foreground">Technical</div>
+                                <div className="text-lg font-bold">{feedback.technicalScore}</div>
+                              </div>
+                            )}
+                            {feedback.communicationScore && (
+                              <div className="text-center border rounded p-2 bg-white">
+                                <div className="text-xs font-medium text-muted-foreground">Communication</div>
+                                <div className="text-lg font-bold">{feedback.communicationScore}</div>
+                              </div>
+                            )}
+                            {feedback.problemSolvingScore && (
+                              <div className="text-center border rounded p-2 bg-white">
+                                <div className="text-xs font-medium text-muted-foreground">Problem Solving</div>
+                                <div className="text-lg font-bold">{feedback.problemSolvingScore}</div>
+                              </div>
+                            )}
+                            {feedback.cultureScore && (
+                              <div className="text-center border rounded p-2 bg-white">
+                                <div className="text-xs font-medium text-muted-foreground">Culture Fit</div>
+                                <div className="text-lg font-bold">{feedback.cultureScore}</div>
+                              </div>
+                            )}
+                          </div>
+
+                          {feedback.strengths && (
+                            <div className="bg-green-50 p-2 rounded border border-green-200">
+                              <div className="text-xs font-medium text-green-700 mb-1">✓ Strengths</div>
+                              <div className="text-sm text-green-800">{feedback.strengths}</div>
+                            </div>
+                          )}
+
+                          {feedback.weaknesses && (
+                            <div className="bg-orange-50 p-2 rounded border border-orange-200">
+                              <div className="text-xs font-medium text-orange-700 mb-1">△ Weaknesses</div>
+                              <div className="text-sm text-orange-800">{feedback.weaknesses}</div>
+                            </div>
+                          )}
+
                           {feedback.notes && (
-                            <div className="mt-1 text-muted-foreground">{feedback.notes}</div>
+                            <div className="bg-blue-50 p-2 rounded border border-blue-200">
+                              <div className="text-xs font-medium text-blue-700 mb-1">Notes</div>
+                              <div className="text-sm text-blue-800">{feedback.notes}</div>
+                            </div>
                           )}
                         </div>
                       ))}
