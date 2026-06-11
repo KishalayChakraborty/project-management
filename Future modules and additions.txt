@@ -1,0 +1,15 @@
+Future modules and additions. configs:
+1. add option to define and update estimated time for each task in turms of months, days, hrs etc. cost of execution and resource neeeds. This will help in better planning and allocation of resources for each task.
+
+2. resorce regitery organisation wise to keep track of available resources and their allocation across different projects and tasks. This will help in optimizing resource utilization and avoiding conflicts.
+
+3. inventory management system to keep track of all the resources, their status, and availability. This will help in better planning and allocation of resources for each task. like tools, machines, consumables, stock and status, status update and there usage registry. This will help in better planning and allocation of resources for each task and avoid any delays due to unavailability of resources.
+
+4. task dependency management to keep track of dependencies between tasks and ensure that they are executed in the correct order. This will help in avoiding delays and ensuring that tasks are completed on time.
+
+5. Reporting and analytics:
+  1. add option to generate reports on task progress, resource utilization, and project status. This will help in better decision making and identifying areas for improvement.
+  2. add option to analyze data on task performance, resource utilization, and project outcomes to identify trends and patterns. This will help in making informed decisions and improving future project planning and execution.
+  3. add option to visualize data on task progress,resource utilization, and project status using charts and graphs. This will help in better understanding of the data and making informed decisions.
+  4. add option to generate alerts and notifications based on predefined thresholds for task progress, resource utilization, and project status. This will help in proactive management and timely intervention to address any issues or delays.
+

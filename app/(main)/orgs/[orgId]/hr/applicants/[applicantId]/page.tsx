@@ -11,6 +11,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { InterviewScheduleDialog } from '@/components/hr/InterviewScheduleDialog';
 import { SalaryStructureDialog } from '@/components/hr/SalaryStructureDialog';
 import { EmploymentOfferDialog } from '@/components/hr/EmploymentOfferDialog';
+import { InterviewFeedbackDialog } from '@/components/hr/InterviewFeedbackDialog';
+import { Check, X } from 'lucide-react';
 
 export default function ApplicantDetailPage() {
   const params = useParams();
@@ -47,6 +49,29 @@ export default function ApplicantDetailPage() {
 
   const handleRefresh = () => {
     setRefreshTrigger((prev) => prev + 1);
+  };
+
+  const handleOfferStatusChange = async (offerId: string, newStatus: string) => {
+    try {
+      const response = await axios.patch(
+        `/api/orgs/${orgId}/hr/applicants/${applicantId}/offer/${offerId}`,
+        { status: newStatus }
+      );
+      setApplicant((prev: any) => ({
+        ...prev,
+        offers: prev.offers.map((o: any) => (o.id === offerId ? response.data.data : o)),
+      }));
+      toast({
+        title: "Success",
+        description: `Offer marked as ${newStatus.toLowerCase()}`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: (error as any).response?.data?.error || "Failed to update offer",
+        variant: "destructive",
+      });
+    }
   };
 
   if (loading) {
