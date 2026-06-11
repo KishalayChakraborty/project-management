@@ -44,23 +44,53 @@ export async function POST(
     const body = await request.json();
     const data = feedbackSchema.parse(body);
 
-    const feedback = await prisma.interviewFeedback.create({
-      data: {
-        ...data,
+    // Check if feedback already exists for this round by this user
+    const existingFeedback = await prisma.interviewFeedback.findFirst({
+      where: {
         roundId,
         userId: user.id,
-        isSubmitted: true,
-        submittedAt: new Date(),
       },
     });
 
-    await createAuditLog({
-      orgId,
-      actorUserId: user.id,
-      entityType: 'InterviewFeedback',
-      entityId: feedback.id,
-      action: 'CREATE',
-    });
+    let feedback;
+
+    if (existingFeedback) {
+      // Update existing feedback
+      feedback = await prisma.interviewFeedback.update({
+        where: { id: existingFeedback.id },
+        data: {
+          ...data,
+          submittedAt: new Date(),
+        },
+      });
+
+      await createAuditLog({
+        orgId,
+        actorUserId: user.id,
+        entityType: 'InterviewFeedback',
+        entityId: feedback.id,
+        action: 'UPDATE',
+      });
+    } else {
+      // Create new feedback
+      feedback = await prisma.interviewFeedback.create({
+        data: {
+          ...data,
+          roundId,
+          userId: user.id,
+          isSubmitted: true,
+          submittedAt: new Date(),
+        },
+      });
+
+      await createAuditLog({
+        orgId,
+        actorUserId: user.id,
+        entityType: 'InterviewFeedback',
+        entityId: feedback.id,
+        action: 'CREATE',
+      });
+    }
 
     return NextResponse.json({ data: feedback }, { status: 201 });
   } catch (error) {

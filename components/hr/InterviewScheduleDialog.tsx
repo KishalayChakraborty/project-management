@@ -71,6 +71,7 @@ export function InterviewScheduleDialog({
 
   async function onSubmit(data: InterviewFormValues) {
     try {
+      const tzOffset = new Date().getTimezoneOffset();
       await axios.post(
         `/api/orgs/${orgId}/hr/applicants/${applicantId}/interviews`,
         data
