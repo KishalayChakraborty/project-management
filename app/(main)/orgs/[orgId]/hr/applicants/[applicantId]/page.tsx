@@ -308,6 +308,14 @@ export default function ApplicantDetailPage() {
                       ))}
                     </div>
                   )}
+                  <div className="flex gap-2 pt-4">
+                    <InterviewFeedbackDialog
+                      orgId={orgId}
+                      applicantId={applicantId}
+                      roundId={round.id}
+                      onSuccess={handleRefresh}
+                    />
+                  </div>
                 </CardContent>
               </Card>
             ))
@@ -404,6 +412,28 @@ export default function ApplicantDetailPage() {
                       )}
                       <div className="text-sm">
                         Role: {offer.assignedRole}
+                      {offer.status !== "ACCEPTED" && offer.status !== "DECLINED" && (
+                        <div className="flex gap-2 pt-4">
+                          <Button
+                            size="sm"
+                            variant="default"
+                            onClick={() => handleOfferStatusChange(offer.id, "ACCEPTED")}
+                            className="gap-2"
+                          >
+                            <Check className="h-4 w-4" />
+                            Accept
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => handleOfferStatusChange(offer.id, "DECLINED")}
+                            className="gap-2"
+                          >
+                            <X className="h-4 w-4" />
+                            Decline
+                          </Button>
+                        </div>
+                      )}
                       </div>
                     </div>
                   </CardContent>
