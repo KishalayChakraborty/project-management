@@ -42,9 +42,10 @@ import {
   Plus, Pencil, ArrowUpDown, ArrowUp, ArrowDown,
   ChevronLeft, ChevronRight, ExternalLink, Star, AlertCircle,
   CheckCircle2, Clock, Filter, X, RotateCcw,
-  List, LayoutGrid, GripVertical, ChevronDown, GitBranch,
+  List, LayoutGrid, GripVertical, ChevronDown, GitBranch, DollarSign, Package,
 } from 'lucide-react';
 import type { Task } from '@/hooks/tasks/useTasks';
+import { formatEstimatedTime, formatCost, calculateTotalEstimatedTime, calculateTotalCost } from '@/lib/task-utils';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -810,6 +811,9 @@ export default function AllTasksPage() {
                               Deadline <SortIcon field="deadline" />
                             </Button>
                           </TableHead>
+                          <TableHead className="w-[100px]">Est. Time</TableHead>
+                          <TableHead className="w-[100px]">Cost</TableHead>
+                          <TableHead className="w-[80px] text-center">Resources</TableHead>
                           <TableHead className="w-[60px] text-center">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -890,6 +894,65 @@ export default function AllTasksPage() {
                                   </span>
                                 ) : <span className="text-muted-foreground">—</span>}
                               </TableCell>
+
+                              {/* Estimated Time */}
+                              <TableCell className={`text-xs ${isCompleted ? 'text-muted-foreground' : ''}`}>
+                                {hasSubtasks ? (
+                                  <div className="text-blue-700 font-medium">
+                                    <div>{formatEstimatedTime(calculateTotalEstimatedTime(task))}</div>
+                                    <div className="text-[10px] text-muted-foreground font-normal">
+                                      ({formatEstimatedTime({
+                                        months: task.estimatedMonths ?? undefined,
+                                        days: task.estimatedDays ?? undefined,
+                                        hours: task.estimatedHours ?? undefined,
+                                        minutes: task.estimatedMinutes ?? undefined,
+                                      })} + {subtasks.length}c)
+                                    </div>
+                                  </div>
+                                ) : task.estimatedMonths || task.estimatedDays || task.estimatedHours || task.estimatedMinutes ? (
+                                  <span className="text-blue-700">{formatEstimatedTime({
+                                    months: task.estimatedMonths ?? undefined,
+                                    days: task.estimatedDays ?? undefined,
+                                    hours: task.estimatedHours ?? undefined,
+                                    minutes: task.estimatedMinutes ?? undefined,
+                                  })}</span>
+                                ) : (
+                                  <span className="text-muted-foreground">—</span>
+                                )}
+                              </TableCell>
+
+                              {/* Cost */}
+                              <TableCell className={`text-xs ${isCompleted ? 'text-muted-foreground' : ''}`}>
+                                {hasSubtasks ? (
+                                  <div className="text-green-700 font-medium">
+                                    <div>{formatCost(calculateTotalCost(task))}</div>
+                                    <div className="text-[10px] text-muted-foreground font-normal">
+                                      ({formatCost(task.costOfExecution)} + {subtasks.length}c)
+                                    </div>
+                                  </div>
+                                ) : task.costOfExecution ? (
+                                  <span className="text-green-700">{formatCost(task.costOfExecution)}</span>
+                                ) : (
+                                  <span className="text-muted-foreground">—</span>
+                                )}
+                              </TableCell>
+
+                              {/* Resources */}
+                              <TableCell className="text-center">
+                                {task.resourceNeeds && (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Package className="h-4 w-4 text-orange-600 inline-block" />
+                                    </TooltipTrigger>
+                                    <TooltipContent className="max-w-xs">
+                                      <pre className="text-xs whitespace-pre-wrap">
+                                        {JSON.stringify(task.resourceNeeds, null, 2)}
+                                      </pre>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                )}
+                              </TableCell>
+
                               <TableCell onClick={(e) => e.stopPropagation()}>
                                 <div className="flex gap-1 items-center justify-end opacity-0 group-hover:opacity-100 transition-opacity">
                                   <Tooltip>
@@ -1028,6 +1091,46 @@ export default function AllTasksPage() {
                                       </span>
                                     ) : <span className="text-muted-foreground">—</span>}
                                   </TableCell>
+
+                                  {/* Subtask Estimated Time */}
+                                  <TableCell className={`text-xs ${subtaskCompleted ? 'text-muted-foreground' : ''}`}>
+                                    {subtask.estimatedMonths || subtask.estimatedDays || subtask.estimatedHours || subtask.estimatedMinutes ? (
+                                      <span className="text-blue-700">{formatEstimatedTime({
+                                        months: subtask.estimatedMonths ?? undefined,
+                                        days: subtask.estimatedDays ?? undefined,
+                                        hours: subtask.estimatedHours ?? undefined,
+                                        minutes: subtask.estimatedMinutes ?? undefined,
+                                      })}</span>
+                                    ) : (
+                                      <span className="text-muted-foreground">—</span>
+                                    )}
+                                  </TableCell>
+
+                                  {/* Subtask Cost */}
+                                  <TableCell className={`text-xs ${subtaskCompleted ? 'text-muted-foreground' : ''}`}>
+                                    {subtask.costOfExecution ? (
+                                      <span className="text-green-700">{formatCost(subtask.costOfExecution)}</span>
+                                    ) : (
+                                      <span className="text-muted-foreground">—</span>
+                                    )}
+                                  </TableCell>
+
+                                  {/* Subtask Resources */}
+                                  <TableCell className="text-center">
+                                    {subtask.resourceNeeds && (
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Package className="h-4 w-4 text-orange-600 inline-block" />
+                                        </TooltipTrigger>
+                                        <TooltipContent className="max-w-xs">
+                                          <pre className="text-xs whitespace-pre-wrap">
+                                            {JSON.stringify(subtask.resourceNeeds, null, 2)}
+                                          </pre>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    )}
+                                  </TableCell>
+
                                   <TableCell onClick={(e) => e.stopPropagation()}>
                                     <div className="flex gap-1 items-center justify-end opacity-0 group-hover:opacity-100 transition-opacity">
                                       <Tooltip>

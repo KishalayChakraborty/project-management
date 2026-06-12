@@ -47,10 +47,13 @@ import {
   Square,
   Clock,
   GitBranch,
+  DollarSign,
+  Package,
 } from 'lucide-react';
 import type { Task } from '@/hooks/tasks/useTasks';
 import { useActiveWorkSession, useStartWorkSession, usePauseWorkSession, useResumeWorkSession, useStopWorkSession } from '@/hooks/work-logs/useWorkSessions';
 import { useTaskWorkLogs } from '@/hooks/work-logs/useTaskWorkLogs';
+import { formatEstimatedTime, formatCost } from '@/lib/task-utils';
 
 // ─── constants ────────────────────────────────────────────────────────────────
 
@@ -389,6 +392,54 @@ function TaskRow({
             </span>
           </TooltipTrigger>
           <TooltipContent>Total time logged on this task</TooltipContent>
+        </Tooltip>
+      )}
+
+      {/* Estimated Time - with aggregation if has subtasks */}
+      {!compact && (task.estimatedMonths || task.estimatedDays || task.estimatedHours || task.estimatedMinutes) && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="text-xs shrink-0 px-2 py-1 bg-purple-100 text-purple-700 rounded font-medium flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              {formatEstimatedTime({
+                months: task.estimatedMonths ?? undefined,
+                days: task.estimatedDays ?? undefined,
+                hours: task.estimatedHours ?? undefined,
+                minutes: task.estimatedMinutes ?? undefined,
+              })}
+            </span>
+          </TooltipTrigger>
+          <TooltipContent>Estimated time to complete</TooltipContent>
+        </Tooltip>
+      )}
+
+      {/* Cost of Execution - with aggregation if has subtasks */}
+      {!compact && task.costOfExecution && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="text-xs shrink-0 px-2 py-1 bg-green-100 text-green-700 rounded font-medium flex items-center gap-1">
+              <DollarSign className="h-3 w-3" />
+              {formatCost(task.costOfExecution)}
+            </span>
+          </TooltipTrigger>
+          <TooltipContent>Cost of execution</TooltipContent>
+        </Tooltip>
+      )}
+
+      {/* Resource Needs */}
+      {!compact && task.resourceNeeds && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="text-xs shrink-0 px-2 py-1 bg-orange-100 text-orange-700 rounded font-medium flex items-center gap-1">
+              <Package className="h-3 w-3" />
+              Resources
+            </span>
+          </TooltipTrigger>
+          <TooltipContent>
+            <pre className="whitespace-pre-wrap text-xs">
+              {JSON.stringify(task.resourceNeeds, null, 2)}
+            </pre>
+          </TooltipContent>
         </Tooltip>
       )}
 

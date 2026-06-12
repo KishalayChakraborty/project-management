@@ -34,7 +34,9 @@ import {
 } from "@/components/ui/select";
 import { EditTaskDialog } from "@/components/tasks/EditTaskDialog";
 import { TaskCommentSection } from "@/components/tasks/TaskCommentSection";
-import { ArrowLeft, Pencil, Link2, X, Send, Trash2, Loader2 } from "lucide-react";
+import { TaskEstimationDisplay } from "@/components/tasks/TaskEstimationDisplay";
+import { ArrowLeft, Pencil, Link2, X, Send, Trash2, Loader2, Clock, DollarSign, Package } from "lucide-react";
+import { formatEstimatedTime, formatCost, calculateTotalEstimatedTime, calculateTotalCost } from "@/lib/task-utils";
 
 function formatDuration(minutes: number) {
   const h = Math.floor(minutes / 60);
@@ -326,6 +328,76 @@ export default function TaskDetailPage() {
                   </p>
                 </div>
               )}
+            </div>
+
+            {/* Estimation & Resources Display */}
+            <div className="border-t pt-4">
+              <h3 className="font-medium mb-4">Estimation & Resources</h3>
+              <div className="grid gap-4 sm:grid-cols-3">
+                {(task.estimatedMonths || task.estimatedDays || task.estimatedHours || task.estimatedMinutes || (detail.children && detail.children.length > 0)) && (
+                  <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Clock className="h-4 w-4 text-blue-600" />
+                      <p className="text-xs font-medium text-blue-700">Estimated Time</p>
+                    </div>
+                    <p className="text-sm font-semibold text-blue-900">
+                      {detail.children && detail.children.length > 0 ? (
+                        <span>
+                          {formatEstimatedTime(calculateTotalEstimatedTime(detail))}
+                          <span className="text-xs text-blue-700 block mt-1">
+                            ({formatEstimatedTime({
+                              months: task.estimatedMonths ?? undefined,
+                              days: task.estimatedDays ?? undefined,
+                              hours: task.estimatedHours ?? undefined,
+                              minutes: task.estimatedMinutes ?? undefined,
+                            })} + children)
+                          </span>
+                        </span>
+                      ) : (
+                        formatEstimatedTime({
+                          months: task.estimatedMonths ?? undefined,
+                          days: task.estimatedDays ?? undefined,
+                          hours: task.estimatedHours ?? undefined,
+                          minutes: task.estimatedMinutes ?? undefined,
+                        })
+                      )}
+                    </p>
+                  </div>
+                )}
+                {(task.costOfExecution || (detail.children && detail.children.some(c => c.costOfExecution))) && (
+                  <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                    <div className="flex items-center gap-2 mb-1">
+                      <DollarSign className="h-4 w-4 text-green-600" />
+                      <p className="text-xs font-medium text-green-700">Cost of Execution</p>
+                    </div>
+                    <p className="text-sm font-semibold text-green-900">
+                      {detail.children && detail.children.length > 0 ? (
+                        <span>
+                          {formatCost(calculateTotalCost(detail))}
+                          <span className="text-xs text-green-700 block mt-1">
+                            ({formatCost(task.costOfExecution)} + children)
+                          </span>
+                        </span>
+                      ) : (
+                        formatCost(task.costOfExecution)
+                      )}
+                    </p>
+                  </div>
+                )}
+                {task.resourceNeeds && (
+                  <div className="p-3 bg-orange-50 rounded-lg border border-orange-200">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Package className="h-4 w-4 text-orange-600" />
+                      <p className="text-xs font-medium text-orange-700">Resource Needs</p>
+                    </div>
+                    <p className="text-xs text-orange-900 whitespace-pre-wrap">
+                      {typeof task.resourceNeeds === 'object'
+                        ? JSON.stringify(task.resourceNeeds, null, 2).substring(0, 100) + '...'
+                        : String(task.resourceNeeds).substring(0, 100)}
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
 
             {detail.parent && (

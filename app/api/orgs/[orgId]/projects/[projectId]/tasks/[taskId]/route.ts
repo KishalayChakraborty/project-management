@@ -14,6 +14,12 @@ const updateTaskSchema = z.object({
   startDt: z.string().datetime().optional().nullable(),
   endDt: z.string().datetime().optional().nullable(),
   deadlineDt: z.string().datetime().optional().nullable(),
+  estimatedMonths: z.number().int().min(0).optional().nullable(),
+  estimatedDays: z.number().int().min(0).optional().nullable(),
+  estimatedHours: z.number().int().min(0).optional().nullable(),
+  estimatedMinutes: z.number().int().min(0).optional().nullable(),
+  costOfExecution: z.number().min(0).optional().nullable(),
+  resourceNeeds: z.record(z.string(), z.unknown()).optional().nullable(),
 });
 
 export async function GET(
@@ -184,6 +190,12 @@ export async function PATCH(
       if (data.startDt !== undefined) updateData.startDt = toDateOrNull(data.startDt);
       if (data.endDt !== undefined) updateData.endDt = toDateOrNull(data.endDt);
       if (data.deadlineDt !== undefined) updateData.deadlineDt = toDateOrNull(data.deadlineDt);
+      if (data.estimatedMonths !== undefined) updateData.estimatedMonths = data.estimatedMonths;
+      if (data.estimatedDays !== undefined) updateData.estimatedDays = data.estimatedDays;
+      if (data.estimatedHours !== undefined) updateData.estimatedHours = data.estimatedHours;
+      if (data.estimatedMinutes !== undefined) updateData.estimatedMinutes = data.estimatedMinutes;
+      if (data.costOfExecution !== undefined) updateData.costOfExecution = data.costOfExecution;
+      if (data.resourceNeeds !== undefined) updateData.resourceNeeds = data.resourceNeeds;
     }
 
     const updated = await prisma.task.update({

@@ -16,6 +16,12 @@ export interface Task {
   startDt?: string | null;
   endDt?: string | null;
   deadlineDt?: string | null;
+  estimatedMonths?: number | null;
+  estimatedDays?: number | null;
+  estimatedHours?: number | null;
+  estimatedMinutes?: number | null;
+  costOfExecution?: number | null;
+  resourceNeeds?: Record<string, unknown> | null;
   createdAt: string;
   updatedAt: string;
   project?: {
@@ -42,7 +48,18 @@ export interface Task {
 
 export interface TaskDetail extends Task {
   parent?: { id: string; title: string } | null;
-  children?: { id: string; title: string; status: string; priority: string }[];
+  children?: {
+    id: string;
+    title: string;
+    status: string;
+    priority: string;
+    estimatedMonths?: number | null;
+    estimatedDays?: number | null;
+    estimatedHours?: number | null;
+    estimatedMinutes?: number | null;
+    costOfExecution?: number | null;
+    resourceNeeds?: Record<string, unknown> | null;
+  }[];
   dependencies?: { blockedByTask: { id: string; title: string; status: string } }[];
   workLogs?: {
     id: string;
@@ -66,6 +83,12 @@ export interface CreateTaskInput {
   startDt?: string;
   endDt?: string;
   deadlineDt?: string;
+  estimatedMonths?: number;
+  estimatedDays?: number;
+  estimatedHours?: number;
+  estimatedMinutes?: number;
+  costOfExecution?: number;
+  resourceNeeds?: Record<string, unknown>;
 }
 
 export interface TasksResponse {

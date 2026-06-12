@@ -39,6 +39,12 @@ const editTaskSchema = z.object({
   startDt: z.string().optional().nullable(),
   endDt: z.string().optional().nullable(),
   deadlineDt: z.string().optional().nullable(),
+  estimatedMonths: z.string().optional().nullable(),
+  estimatedDays: z.string().optional().nullable(),
+  estimatedHours: z.string().optional().nullable(),
+  estimatedMinutes: z.string().optional().nullable(),
+  costOfExecution: z.string().optional().nullable(),
+  resourceNeeds: z.string().optional().nullable(),
 });
 
 type EditTaskForm = z.infer<typeof editTaskSchema>;
@@ -89,6 +95,12 @@ export function EditTaskDialog({
       startDt: task.startDt ? new Date(task.startDt).toISOString().slice(0, 16) : null,
       endDt: task.endDt ? new Date(task.endDt).toISOString().slice(0, 16) : null,
       deadlineDt: task.deadlineDt ? new Date(task.deadlineDt).toISOString().slice(0, 16) : null,
+      estimatedMonths: task.estimatedMonths?.toString() ?? null,
+      estimatedDays: task.estimatedDays?.toString() ?? null,
+      estimatedHours: task.estimatedHours?.toString() ?? null,
+      estimatedMinutes: task.estimatedMinutes?.toString() ?? null,
+      costOfExecution: task.costOfExecution?.toString() ?? null,
+      resourceNeeds: task.resourceNeeds ? JSON.stringify(task.resourceNeeds) : null,
     },
   });
 
@@ -110,13 +122,19 @@ export function EditTaskDialog({
         startDt: task.startDt ? new Date(task.startDt).toISOString().slice(0, 16) : null,
         endDt: task.endDt ? new Date(task.endDt).toISOString().slice(0, 16) : null,
         deadlineDt: task.deadlineDt ? new Date(task.deadlineDt).toISOString().slice(0, 16) : null,
+        estimatedMonths: task.estimatedMonths?.toString() ?? null,
+        estimatedDays: task.estimatedDays?.toString() ?? null,
+        estimatedHours: task.estimatedHours?.toString() ?? null,
+        estimatedMinutes: task.estimatedMinutes?.toString() ?? null,
+        costOfExecution: task.costOfExecution?.toString() ?? null,
+        resourceNeeds: task.resourceNeeds ? JSON.stringify(task.resourceNeeds) : null,
       });
     }
   }, [open, task, reset]);
 
   const onSubmit = async (data: EditTaskForm) => {
     try {
-      await updateTask.mutateAsync({
+      const updatePayload: any = {
         title: data.title,
         description: data.description || undefined,
         type: data.type,
@@ -126,7 +144,28 @@ export function EditTaskDialog({
         startDt: data.startDt ? new Date(data.startDt).toISOString() : null,
         endDt: data.endDt ? new Date(data.endDt).toISOString() : null,
         deadlineDt: data.deadlineDt ? new Date(data.deadlineDt).toISOString() : null,
-      });
+      };
+
+      if (data.estimatedMonths !== null && data.estimatedMonths !== undefined) {
+        updatePayload.estimatedMonths = parseInt(data.estimatedMonths, 10);
+      }
+      if (data.estimatedDays !== null && data.estimatedDays !== undefined) {
+        updatePayload.estimatedDays = parseInt(data.estimatedDays, 10);
+      }
+      if (data.estimatedHours !== null && data.estimatedHours !== undefined) {
+        updatePayload.estimatedHours = parseInt(data.estimatedHours, 10);
+      }
+      if (data.estimatedMinutes !== null && data.estimatedMinutes !== undefined) {
+        updatePayload.estimatedMinutes = parseInt(data.estimatedMinutes, 10);
+      }
+      if (data.costOfExecution !== null && data.costOfExecution !== undefined) {
+        updatePayload.costOfExecution = parseFloat(data.costOfExecution);
+      }
+      if (data.resourceNeeds !== null && data.resourceNeeds !== undefined) {
+        updatePayload.resourceNeeds = JSON.parse(data.resourceNeeds);
+      }
+
+      await updateTask.mutateAsync(updatePayload);
 
       if (data.assigneeUserId !== initialAssignee) {
         await updateAssignee.mutateAsync(data.assigneeUserId || null);
@@ -387,6 +426,139 @@ export function EditTaskDialog({
                       </FormItem>
                     )}
                   />
+                </div>
+
+                <div className="border-t pt-4 mt-4">
+                  <h3 className="text-sm font-semibold mb-4">Estimation & Resources</h3>
+                  <div className="grid grid-cols-4 gap-2">
+                    <FormField
+                      control={form.control}
+                      name="estimatedMonths"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">Months</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              min="0"
+                              {...field}
+                              value={field.value ?? ''}
+                              onChange={(e) => field.onChange(e.target.value || null)}
+                              placeholder="0"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="estimatedDays"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">Days</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              min="0"
+                              {...field}
+                              value={field.value ?? ''}
+                              onChange={(e) => field.onChange(e.target.value || null)}
+                              placeholder="0"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="estimatedHours"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">Hours</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              min="0"
+                              {...field}
+                              value={field.value ?? ''}
+                              onChange={(e) => field.onChange(e.target.value || null)}
+                              placeholder="0"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="estimatedMinutes"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">Minutes</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              min="0"
+                              {...field}
+                              value={field.value ?? ''}
+                              onChange={(e) => field.onChange(e.target.value || null)}
+                              placeholder="0"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 mt-4">
+                    <FormField
+                      control={form.control}
+                      name="costOfExecution"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Cost of Execution</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              {...field}
+                              value={field.value ?? ''}
+                              onChange={(e) => field.onChange(e.target.value || null)}
+                              placeholder="0.00"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="mt-4">
+                    <FormField
+                      control={form.control}
+                      name="resourceNeeds"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Resource Needs (JSON)</FormLabel>
+                          <FormControl>
+                            <textarea
+                              className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+                              rows={3}
+                              {...field}
+                              value={field.value ?? ''}
+                              onChange={(e) => field.onChange(e.target.value || null)}
+                              placeholder='{"team": "Backend", "tools": ["AWS", "Docker"]}'
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                 </div>
               </div>
               <DialogFooter className="flex-shrink-0 px-6 py-4 border-t">

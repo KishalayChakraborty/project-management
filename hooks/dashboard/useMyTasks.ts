@@ -12,6 +12,12 @@ export interface MyTask {
   deadlineDt?: string | null;
   startDt?: string | null;
   endDt?: string | null;
+  estimatedMonths?: number | null;
+  estimatedDays?: number | null;
+  estimatedHours?: number | null;
+  estimatedMinutes?: number | null;
+  costOfExecution?: number | null;
+  resourceNeeds?: Record<string, unknown> | null;
   createdAt: string;
   updatedAt: string;
   projectId: string;

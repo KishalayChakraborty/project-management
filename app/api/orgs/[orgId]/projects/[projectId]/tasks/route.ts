@@ -19,6 +19,12 @@ const createTaskSchema = z.object({
   startDt: z.string().optional(),
   endDt: z.string().optional(),
   deadlineDt: z.string().optional(),
+  estimatedMonths: z.number().int().min(0).optional(),
+  estimatedDays: z.number().int().min(0).optional(),
+  estimatedHours: z.number().int().min(0).optional(),
+  estimatedMinutes: z.number().int().min(0).optional(),
+  costOfExecution: z.number().min(0).optional(),
+  resourceNeeds: z.record(z.string(), z.unknown()).optional(),
 });
 
 export async function GET(
@@ -200,6 +206,12 @@ export async function POST(
         startDt: data.startDt ? new Date(data.startDt) : null,
         endDt: data.endDt ? new Date(data.endDt) : null,
         deadlineDt: data.deadlineDt ? new Date(data.deadlineDt) : null,
+        estimatedMonths: data.estimatedMonths ?? null,
+        estimatedDays: data.estimatedDays ?? null,
+        estimatedHours: data.estimatedHours ?? null,
+        estimatedMinutes: data.estimatedMinutes ?? null,
+        costOfExecution: data.costOfExecution ?? null,
+        resourceNeeds: data.resourceNeeds ? (data.resourceNeeds as any) : null,
         createdBy: user.id,
       },
       include: {
